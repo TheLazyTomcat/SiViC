@@ -62,6 +62,17 @@ type
     Count:  Integer;
   end;
 
+  TSVCAssemblerItem_Unres = record
+    Identifier: String;
+    Count:      Integer;
+    SrcLineIdx: Integer;    
+  end;
+
+  TSVCAssemblerList_Unres = record
+    Arr:    array of TSVCAssemblerItem_Unres;
+    Count:  Integer;
+  end;
+
   TSVCAssemblerLineType = (altSys,altConst,altVar,altLabel,altData,altInstr,altOther);
 
   TSVCAssemblerInstruction = record
@@ -101,7 +112,8 @@ type
     fSystemValues:      TSVCAssemblerList_Sys;
     fConstants:         TSVCAssemblerList_Const;
     fVariables:         TSVCAssemblerList_Var;
-    fLabels:            TSVCAssemblerList_Label;      
+    fLabels:            TSVCAssemblerList_Label;
+    fUnresolved:        TSVCAssemblerList_Unres;     
     fAssemblerLines:    TSVCAssemblerLines;
     fAssemblerMessages: TSVCAssemblerMessages;
     // assembling variables
@@ -119,11 +131,14 @@ type
     Function IndexOfSys(const Identifier: String): Integer; virtual;
     Function IndexOfConst(const Identifier: String): Integer; virtual;
     Function IndexOfVar(const Identifier: String): Integer; virtual;
-    Function IndexOfLabel(const Identifier: String): Integer; virtual;    
+    Function IndexOfLabel(const Identifier: String): Integer; virtual;
+    Function IndexOfUnres(const Identifier: String): Integer; virtual;
     Function AddSys(Item: TSVCAssemblerItem_Sys): Integer; virtual;
     Function AddConst(Item: TSVCAssemblerItem_Const): Integer; virtual;
     Function AddVar(Item: TSVCAssemblerItem_Var): Integer; virtual;
     Function AddLabel(Item: TSVCAssemblerItem_Label): Integer; virtual;
+    Function AddUnres(const Identifier: String; SrcLineIdx: Integer): Integer; virtual;
+    Function RemoveUnres(const Identifier: String): Integer; virtual;
     Function AddAssemblerLine(Item: TSVCAssemblerLine): Integer; virtual;
     class Function BuildAssemblerMessage(MessageType: TSVCParserMessageType; Text: String; LineIdx,Position: Integer): TSVCAssemblerMessage; virtual;
     Function AddAssemblerMessage(Item: TSVCAssemblerMessage): Integer; virtual;
@@ -293,6 +308,21 @@ end;
 
 //------------------------------------------------------------------------------
 
+Function TSVCAssembler.IndexOfUnres(const Identifier: String): Integer;
+var
+  i:  Integer;
+begin
+Result := -1;
+For i := Low(fUnresolved.Arr) to Pred(fUnresolved.Count) do
+  If AnsiSameText(fUnresolved.Arr[i].Identifier,Identifier) then
+    begin
+      Result := i;
+      Break{For i};
+    end;
+end;
+
+//------------------------------------------------------------------------------
+
 Function TSVCAssembler.AddSys(Item: TSVCAssemblerItem_Sys): Integer;
 begin
 Result := IndexOfSys(Item.Identifier);
@@ -362,6 +392,43 @@ end;
 
 //------------------------------------------------------------------------------
 
+Function TSVCAssembler.AddUnres(const Identifier: String; SrcLineIdx: Integer): Integer;
+begin
+Result := IndexOfUnres(Identifier);
+If Result < 0 then
+  begin
+    If fUnresolved.Count >= Length(fUnresolved.Arr) then
+      SetLength(fUnresolved.Arr,Length(fUnresolved.Arr) + 8);
+    fUnresolved.Arr[fUnresolved.Count].Identifier := Identifier;
+    fUnresolved.Arr[fUnresolved.Count].Count := 1;
+    fUnresolved.Arr[fUnresolved.Count].SrcLineIdx := SrcLineIdx;
+    Result := fUnresolved.Count;
+    Inc(fUnresolved.Count);
+  end
+else Inc(fUnresolved.Arr[Result].Count);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TSVCAssembler.RemoveUnres(const Identifier: String): Integer;
+var
+  i:  Integer;
+begin
+Result := IndexOfUnres(Identifier);
+If Result >= 0 then
+  begin
+    Dec(fUnresolved.Arr[Result].Count);
+    If fUnresolved.Arr[Result].Count <= 0 then
+      begin
+        For i := Succ(Result) to Pred(fUnresolved.Count) do
+          fUnresolved.Arr[i - 1] := fUnresolved.Arr[i];
+        Dec(fUnresolved.Count);
+      end;
+  end;
+end;
+
+//------------------------------------------------------------------------------
+
 Function TSVCAssembler.AddAssemblerLine(Item: TSVCAssemblerLine): Integer;
 begin
 If fAssemblerLines.Count >= Length(fAssemblerLines.Arr) then
@@ -419,7 +486,7 @@ var
   Addr: TSVCComp;
   i:    Integer;
 begin
-If (fMemTaken <= TMemSize(High(TSVCNative))) and (fVariables.Count > 0) then
+If fMemTaken <= TMemSize(High(TSVCNative)) then
   begin
     // get address of first variable (lowest address)
     Addr := TSVCComp(fMemTaken);
@@ -482,9 +549,10 @@ For i := Low(fAssemblerLines.Arr) to Pred(fAssemblerLines.Count) do
               If Index >= 0 then
                 begin
                   // replacement is a constant
-                  Temp := TSVCComp(fConstants.Arr[Index].Value);
-                  If not(((fConstants.Arr[Index].Size = vsByte) and (ValType in [iatREL8,iatIMM8])) or
-                         ((fConstants.Arr[Index].Size = vsWord) and (ValType in [iatREL16,iatIMM16]))) then
+                  Temp := TSVCComp(TSVCSNative(fConstants.Arr[Index].Value));
+                  If ((fConstants.Arr[Index].Size = vsByte) and (ValType in [iatREL16,iatIMM16])) or
+                     ((fConstants.Arr[Index].Size = vsWord) and ((ValType in [iatREL8,iatIMM8]) and
+                      ((Temp > 255) or (Temp < -128)))) then
                     AddWarningMessage('Size mismatch for constant "%s"',[Identifier]);
                 end
               else
@@ -518,6 +586,8 @@ For i := Low(fAssemblerLines.Arr) to Pred(fAssemblerLines.Count) do
               else raise ESVCAssemblerError.CreateFmt('Replacement "%s" cannot fit into code stream',[Identifier]);
             end
           else raise ESVCAssemblerError.CreateFmt('Invalid argument type for replacement "%s"',[Identifier]);
+          // remove replacement from unresolved
+          RemoveUnres(Identifier);
         end;
 end;
 
@@ -585,7 +655,7 @@ case ResultType of
               If (fCodeSize + TMemSize(Length(TempLine.Instruction.Data))) <= (TMemSize(High(TSVCNative)) + 1) then
                 begin
                   AddAssemblerLine(TempLine);
-                  Inc(fCodeSize,Length(TempLine.Instruction.Data));
+                  fCodeSize := fCodeSize + TMemSize(Length(TempLine.Instruction.Data));
                 end
               else raise ESVCAssemblerError.Create('Program cannot fit into available memory');
             end;
@@ -601,12 +671,15 @@ case ResultType of
                   // copy instruction data
                   For i := Low(TempLine.Instruction.Data) to High(TempLine.Instruction.Data) do
                     TempLine.Instruction.Data[i] := PSVCParserResult_Instr(Result)^.Window.Data[i];
-                  // copy replacements
+                  // copy replacements and add to unresolved replacements
                   SetLength(TempLine.Instruction.Replacements,Length(PSVCParserResult_Instr(Result)^.Replacements));
                   For i := Low(TempLine.Instruction.Replacements) to High(TempLine.Instruction.Replacements) do
-                    TempLine.Instruction.Replacements[i] := PSVCParserResult_Instr(Result)^.Replacements[i];
+                    begin
+                      TempLine.Instruction.Replacements[i] := PSVCParserResult_Instr(Result)^.Replacements[i];
+                      AddUnres(PSVCParserResult_Instr(Result)^.Replacements[i].Identifier,fParsedLineIdx);
+                    end;
                   AddAssemblerLine(TempLine);
-                  Inc(fCodeSize,Length(TempLine.Instruction.Data));
+                  fCodeSize := fCodeSize + TMemSize(Length(TempLine.Instruction.Data));
                 end
               else raise ESVCAssemblerError.Create('Program cannot fit into available memory');
             end;
@@ -695,12 +768,23 @@ end;
 //------------------------------------------------------------------------------
 
 Function TSVCAssembler.Assemble_Final: Boolean;
+var
+  i:  Integer;
 begin
 try
   fMemTaken := fCodeSize;
   FinalizeVariables;
   FinalizeReplacements;
-  Result := True;
+  // check if all replacements has been resolved
+  If fUnresolved.Count > 0 then
+    begin
+      For i := Low(fUnresolved.Arr) to Pred(fUnresolved.Count) do
+        AddAssemblerMessage(BuildAssemblerMessage(pmtError,
+          Format('Unresolved identifier "%s"',[fUnresolved.Arr[i].Identifier]),
+          fUnresolved.Arr[i].SrcLineIdx,0));
+      Result := False;
+    end
+  else Result := True;
 except
   on E: ESVCAssemblerError do
     begin
@@ -719,6 +803,7 @@ var
   ErrCount: Integer;
 begin
 ErrCount := 0;
+Result := True;
 Assemble_Init;
 For i := 0 to Pred(SourceCode.Count) do
   begin
