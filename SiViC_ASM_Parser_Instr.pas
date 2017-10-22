@@ -61,7 +61,7 @@ type
 
   TSVCParserResult_Instr = record
     Window:       TSVCInstructionWindow;
-    Replacements: array of TSVCParserResult_Instr_Replacement
+    Replacements: array of TSVCParserResult_Instr_Replacement;
   end;
   PSVCParserResult_Instr = ^TSVCParserResult_Instr;
 
