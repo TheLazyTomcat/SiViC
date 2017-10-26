@@ -51,9 +51,8 @@ const
     ('','IP','FLAGS','CNTR','CR','REL8','REL16','IMM8','IMM16','REG8','REG16','MEM8','MEM16','MEM');
 
 type
-  // instructions (event) handler prototypes
+  // instruction handler prototype
   TSVCInstructionHandler = procedure of object;
-  TSVCInstructionEvent   = procedure(Sender: TObject; InstructionWindow: TSVCInstructionWindow) of object;
 
   // structures used in instruction execution
   TSVCInstructionArgumentData = record

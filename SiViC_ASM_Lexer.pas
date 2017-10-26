@@ -5,6 +5,8 @@ unit SiViC_ASM_Lexer;
 interface
 
 const
+  SVC_ASM_LEXER_CHAR_STRINGQUOTE = '''';
+
   SVC_ASM_LEXER_CHARS_WHITESPACE      = [#0..#32];
   SVC_ASM_LEXER_CHARS_NUMBERSTART     = ['$','0'..'9'];
   SVC_ASM_LEXER_CHARS_NUMBER          = ['0'..'9','a'..'f','A'..'F','x','X'];
@@ -14,10 +16,10 @@ const
 type                            //      {}       (**)     /**/
   TSVCLexerCommentType = (lcmtNone,lcmtType1,lcmtType2,lcmtType3,lcmtType4);
   TSVCLexerTokenType   = (lttNumber,lttUnaryOp,lttIdentifier,lttGeneral,
-                          lttComment,lttInvalid);
+                          lttComment,lttString,lttInvalid);
   TSVCLexerCharType    = (lctWhiteSpace,lctNumber,lctUnaryOp,lctIdentifier,
-                          lctOthers,lctInvalid); 
-  TSVCLexerStage       = (lsTraverse,lsIdentifier,lsNumber,lsComment);
+                          lctStringQuote,lctOthers,lctInvalid);
+  TSVCLexerStage       = (lsTraverse,lsIdentifier,lsNumber,lsComment,lsString);
 
   TSVCLexerToken = record
     Str:        String;
@@ -37,7 +39,7 @@ type                            //      {}       (**)     /**/
     fContinuousComment: Boolean;
     fTokens:            TSVCLexerTokens;
     // tokenizing engine variables
-    fState:             TSVCLexerStage;
+    fStage:             TSVCLexerStage;
     fPosition:          Integer;
     fTokenStart:        Integer;
     fTokenLength:       Integer;
@@ -53,8 +55,10 @@ type                            //      {}       (**)     /**/
     procedure Process_Identifier; virtual;
     procedure Process_Number; virtual;
     procedure Process_Comment; virtual;
+    procedure Process_String; virtual;
   public
     class Function TrimComment(const Str: String): String; virtual;
+    class Function UnquoteString(const Str: String): String; virtual;
     constructor Create;
     destructor Destroy; override;
     procedure Initialize; virtual;
@@ -107,6 +111,8 @@ else If CharInSet(fLine[fPosition],SVC_ASM_LEXER_CHARS_UNARYOPERATORS) then
   Result := lctUnaryOp
 else If CharInSet(fLine[fPosition],SVC_ASM_LEXER_CHARS_IDENTIFIER) then
   Result := lctIdentifier
+else If fLine[fPosition] = SVC_ASM_LEXER_CHAR_STRINGQUOTE then
+  Result := lctStringQuote
 else If Ord(fLine[fPosition]) <= 127 then
   Result := lctOthers
 else
@@ -158,16 +164,16 @@ end;
 
 procedure TSVCLexer.Process_Traverse;
 
-  procedure InitToken(ReadState: TSVCLexerStage; Start: Integer; Length: Integer = 1);
+  procedure InitToken(Stage: TSVCLexerStage; Start: Integer; Length: Integer = 1);
   begin
-    fState := ReadState;
+    fStage := Stage;
     fTokenStart := Start;
     fTokenLength := Length;
   end;
 
 begin
 case GetCurrCharType of
-  lctWhiteSpace:;
+  lctWhiteSpace:; // continue
   lctNumber:      If fTokens.Count > 0 then
                     begin
                       If (fTokens.Arr[Pred(fTokens.Count)].TokenType = lttUnaryOp) and
@@ -181,6 +187,10 @@ case GetCurrCharType of
                   else InitToken(lsNumber,fPosition);
   lctUnaryOp:     AddToken(fLine[fPosition],fPosition,lttUnaryOp);
   lctIdentifier:  InitToken(lsIdentifier,fPosition);
+  lctStringQuote: If fPosition < Length(fLine) then
+                    InitToken(lsString,fPosition)
+                  else
+                    AddToken(fLine[fPosition],fPosition,lttGeneral);
   lctOthers:      begin
                     fCommentType := CommentStart;
                     If fCommentType <> lcmtNone then
@@ -205,7 +215,7 @@ begin
 If not(CharInSet(fLine[fPosition],SVC_ASM_LEXER_CHARS_IDENTIFIER)) then
   begin
     AddToken(Trim(Copy(fLine,fTokenStart,fTokenLength)),fTokenStart,lttIdentifier);
-    fState := lsTraverse;
+    fStage := lsTraverse;
     Dec(fPosition);
   end
 else Inc(fTokenLength);
@@ -219,13 +229,13 @@ If not(CharInSet(fLine[fPosition],SVC_ASM_LEXER_CHARS_NUMBER)) then
   begin
     If CharInSet(fLine[fPosition],SVC_ASM_LEXER_CHARS_IDENTIFIER) then
       begin
-        fState := lsIdentifier;
+        fStage := lsIdentifier;
         Inc(fTokenLength);
       end
     else
       begin
         AddToken(Trim(Copy(fLine,fTokenStart,fTokenLength)),fTokenStart,lttNumber);
-        fState := lsTraverse;
+        fStage := lsTraverse;
         Dec(fPosition);
       end;
   end
@@ -240,7 +250,29 @@ If CommentEnd then
   begin
     If fIncludeComments then
       AddToken(Copy(fLine,fTokenStart,fTokenLength),fTokenStart,lttComment);
-    fState := lsTraverse;
+    fStage := lsTraverse;
+  end
+else Inc(fTokenLength);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCLexer.Process_String;
+begin
+If fLine[fPosition] = SVC_ASM_LEXER_CHAR_STRINGQUOTE then
+  begin
+    fStage := lsTraverse;
+    If fPosition < Length(fLine) then
+      begin
+        If fLine[fPosition + 1] = SVC_ASM_LEXER_CHAR_STRINGQUOTE then
+          begin
+            Inc(fPosition);
+            Inc(fTokenLength,2);
+            fStage := lsString;
+          end
+        else AddToken(Copy(fLine,fTokenStart,fTokenLength + 1),fTokenStart,lttString);
+      end
+    else AddToken(Copy(fLine,fTokenStart,fTokenLength + 1),fTokenStart,lttString);
   end
 else Inc(fTokenLength);
 end;
@@ -300,6 +332,40 @@ end;
 
 //------------------------------------------------------------------------------
 
+class Function TSVCLexer.UnquoteString(const Str: String): String;
+var
+  i,ResPos: Integer;
+begin
+SetLength(Result,Length(Str));
+ResPos := 0;
+i := 1;
+while i <= Length(Str) do
+  begin
+    If Str[i] = SVC_ASM_LEXER_CHAR_STRINGQUOTE then
+      begin
+        If (i > 1 )and (i < Length(Str)) then
+          begin
+            If Str[i + 1] = SVC_ASM_LEXER_CHAR_STRINGQUOTE then
+              begin
+                Inc(ResPos);
+                Result[ResPos] := Str[i];
+                Inc(i);
+              end
+            else Break{while i};
+          end;
+      end
+    else
+      begin
+        Inc(ResPos);
+        Result[ResPos] := Str[i];
+      end;
+    Inc(i);
+  end;
+SetLength(Result,ResPos);
+end;
+
+//------------------------------------------------------------------------------
+
 constructor TSVCLexer.Create;
 begin
 inherited;
@@ -319,7 +385,7 @@ end;
 
 procedure TSVCLexer.Initialize;
 begin
-fState := lsTraverse;
+fStage := lsTraverse;
 Clear;
 fContinuousComment := False;
 end;
@@ -333,9 +399,9 @@ begin
 Clear;
 fLine := Line;
 If fContinuousComment then
-  fState := lsComment
+  fStage := lsComment
 else
-  fState := lsTraverse;
+  fStage := lsTraverse;
 fContinuousComment := False;
 fPosition := 1;
 fTokenStart := 1;
@@ -344,15 +410,16 @@ If Length(fLine) > 0 then
   begin
     while (fPosition >= 1) and (fPosition <= Length(fLine)) do
       begin
-        case fState of
+        case fStage of
           lsTraverse:   Process_Traverse;
           lsIdentifier: Process_Identifier;
           lsNumber:     Process_Number;
           lsComment:    Process_Comment;
+          lsString:     Process_String;
         end;
         Inc(fPosition);
       end;
-    case fState of
+    case fStage of
       lsIdentifier:
         AddToken(Trim(Copy(fLine,fTokenStart,fTokenLength)),fTokenStart,lttIdentifier);
       lsNumber:
@@ -363,6 +430,8 @@ If Length(fLine) > 0 then
             AddToken(Copy(fLine,fTokenStart,fTokenLength),fTokenStart,lttComment);
           fContinuousComment := fCommentType in [lcmtType2,lcmtType3,lcmtType4];
         end;
+      lsString:
+        AddToken(Copy(fLine,fTokenStart,fTokenLength),fTokenStart,lttString);
     end;
   end;
 {

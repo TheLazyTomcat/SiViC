@@ -1496,8 +1496,8 @@ Function TSVCProcessor_0000.FlaggedSHR_W(A: TSVCWord; Count: TSVCByte): TSVCWord
 begin
 If (Count and $F) <> 0 then
   begin
-    Result := TSVCWord(A shr (Count and $15));
-    SetFlagValue(SVC_REG_FLAGS_CARRY,BT(A,UInt8(Pred(Count and $7))));
+    Result := TSVCWord(A shr (Count and $F));
+    SetFlagValue(SVC_REG_FLAGS_CARRY,BT(A,UInt8(Pred(Count and $F))));
     SetFlagValue(SVC_REG_FLAGS_PARITY,WordParity(Result));
     SetFlagValue(SVC_REG_FLAGS_ZERO,Result = 0);
     SetFlagValue(SVC_REG_FLAGS_SIGN,(Result and TSVCWord($8000)) <> 0);
@@ -1527,7 +1527,7 @@ begin
 If (Count and $F) <> 0 then
   begin
     Result := SAR(A,UInt8(Count and $F));
-    SetFlagValue(SVC_REG_FLAGS_CARRY,BT(A,UInt8(Pred(Count and $7))));
+    SetFlagValue(SVC_REG_FLAGS_CARRY,BT(A,UInt8(Pred(Count and $F))));
     SetFlagValue(SVC_REG_FLAGS_PARITY,WordParity(Result));
     SetFlagValue(SVC_REG_FLAGS_ZERO,Result = 0);
     SetFlagValue(SVC_REG_FLAGS_SIGN,(Result and TSVCWord($8000)) <> 0);

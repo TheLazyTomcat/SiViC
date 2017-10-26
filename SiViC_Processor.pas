@@ -6,6 +6,7 @@ interface
 
 uses
   SysUtils,
+  Classes,
   AuxTypes,
   SiViC_Common,
   SiViC_Memory,
@@ -30,8 +31,8 @@ type
     fExecutionCount:      UInt64;
     fFaultClass:          String;
     fFaultMessage:        String;
-    fOnBeforeInstruction: TSVCInstructionEvent;
-    fOnAfterInstruction:  TSVCInstructionEvent;
+    fOnBeforeInstruction: TNotifyEvent;
+    fOnAfterInstruction:  TNotifyEvent;
   protected
     // internal processor state
     fState:               TSVCProcessorState;
@@ -126,8 +127,8 @@ type
     property ExecutionCount: UInt64 read fExecutionCount;
     property FaultClass: String read fFaultClass;
     property FaultMessage: String read fFaultMessage;
-    property OnBeforeInstruction: TSVCInstructionEvent read fOnBeforeInstruction write fOnBeforeInstruction;
-    property OnAfterInstruction: TSVCInstructionEvent read fOnAfterInstruction write fOnAfterInstruction;
+    property OnBeforeInstruction: TNotifyEvent read fOnBeforeInstruction write fOnBeforeInstruction;
+    property OnAfterInstruction: TNotifyEvent read fOnAfterInstruction write fOnAfterInstruction;
   end;
 
 implementation
@@ -676,12 +677,12 @@ end;
 procedure TSVCProcessor.InstructionIssue;
 begin
 If Assigned(fOnBeforeInstruction) then
-  fOnBeforeInstruction(Self,fCurrentInstruction.Window);
+  fOnBeforeInstruction(Self);
 InstructionDecode;
 InstructionExecute;
 Inc(fExecutionCount);
 If Assigned(fOnAfterInstruction) then
-  fOnAfterInstruction(Self,fCurrentInstruction.Window);
+  fOnAfterInstruction(Self);
 end;
 
 //------------------------------------------------------------------------------
@@ -1027,7 +1028,11 @@ end;
 procedure TSVCProcessor.InterruptRequest(InterruptIndex: TSVCInterruptIndex; Data: TSVCNative = 0);
 begin
 If IsIRQInterrupt(InterruptIndex) then
-  DispatchInterrupt(InterruptIndex,Data);
+  begin
+    DispatchInterrupt(InterruptIndex,Data);
+    If fState = psWaiting then
+      fState := psRunning;
+  end;
 end;
 
 //------------------------------------------------------------------------------

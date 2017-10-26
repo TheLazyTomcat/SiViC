@@ -33,6 +33,7 @@ const
   SVC_PCS_INFOPAGE_MEM_NVBASE_W2    = $2005;
   SVC_PCS_INFOPAGE_MEM_NVBASE_W3    = $2006;
   SVC_PCS_INFOPAGE_MEM_NVBASE_W4    = $2007;
+  // Counters, timers, clocks
 
 type
   TSVCProcessor_Base = class(TSVCProcessor)

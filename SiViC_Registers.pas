@@ -63,7 +63,7 @@ const
   SVC_REG_INITVAL_IP    = $0000;
   SVC_REG_INITVAL_FLAGS = $0040; // interrupts
   SVC_REG_INITVAL_CNTR  = $0000;
-  SVC_REG_INITVAL_CR    = $0006; // faststring, unhinterror
+  SVC_REG_INITVAL_CR    = $0002; // faststring
 
 type
   // types for GPR access

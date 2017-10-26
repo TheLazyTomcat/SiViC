@@ -355,10 +355,7 @@ case fLexer[fTokenIndex].TokenType of
       begin
         If (Num > 65535) or (Num < -32768) then
           AddWarningMessage('Constant out of allowed range');
-        If (Num <= 255) and (Num >= -128) then
-          fParsingData_Instr.Arguments[High(fParsingData_Instr.Arguments)].PossibleTypes := [iatREL8,iatREL16,iatIMM8,iatIMM16]
-        else
-          fParsingData_Instr.Arguments[High(fParsingData_Instr.Arguments)].PossibleTypes := [iatREL16,iatIMM16];
+        fParsingData_Instr.Arguments[High(fParsingData_Instr.Arguments)].PossibleTypes := [iatREL8,iatREL16,iatIMM8,iatIMM16];
         fParsingData_Instr.Arguments[High(fParsingData_Instr.Arguments)].Data := TSVCNative(Num);
         If fTokenIndex < Pred(fLexer.Count) then
           fParsingStage_Instr := psiArgument

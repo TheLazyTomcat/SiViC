@@ -11,7 +11,7 @@ uses
 type
   TSVCHighlighterTokenType = (httReservedWord,httLabel,httPrefix,httInstruction,
                               httModifier,httRegister,httNumber,httComment,
-                              httOthers);
+                              httString,httOthers);
 
   TSVCHighlighterToken = record
     Token:          TSVCLexerToken;
@@ -119,6 +119,8 @@ For i := 0 to Pred(fLexer.Count) do
               fTokens.Arr[i].HighlightType := httOthers;
           end
         else fTokens.Arr[i].HighlightType := httOthers;
+      lttString:
+        fTokens.Arr[i].HighlightType := httString;
     else {case-else}
       fTokens.Arr[i].HighlightType := httOthers;
     end;

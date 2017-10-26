@@ -144,6 +144,7 @@ type
     Function AddAssemblerMessage(Item: TSVCAssemblerMessage): Integer; virtual;
     Function AddWarningMessage(const Text: String; Values: array of const): Integer; overload; virtual;
     Function AddWarningMessage(const Text: String): Integer; overload; virtual;
+    procedure SortMessages; virtual;
     procedure FinalizeVariables; virtual;
     procedure FinalizeReplacements; virtual;
     procedure ParsingResultHandler(Sender: TObject; ResultType: TSVCParserResultType; Result: Pointer); virtual;
@@ -481,6 +482,60 @@ end;
 
 //------------------------------------------------------------------------------
 
+procedure TSVCAssembler.SortMessages;
+
+  procedure Exchange(Idx1,Idx2: Integer);
+  var
+    Temp: TSVCAssemblerMessage;
+  begin
+    If Idx1 <> Idx2 then
+      begin
+        Temp := fAssemblerMessages.Arr[Idx1];
+        fAssemblerMessages.Arr[Idx1] := fAssemblerMessages.Arr[Idx2];
+        fAssemblerMessages.Arr[Idx2] := Temp;
+      end;
+  end;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+  Function CompareItems(Idx1,Idx2: Integer): Integer;
+  begin
+    Result := (fAssemblerMessages.Arr[Idx1].LineIdx - fAssemblerMessages.Arr[Idx2].LineIdx) * 10;
+    If fAssemblerMessages.Arr[Idx1].Position > fAssemblerMessages.Arr[Idx2].Position then
+      Dec(Result)
+    else
+      Inc(Result);
+  end;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+  procedure QuickSort(LeftIdx,RightIdx: Integer);
+  var
+    Idx,i:  Integer;
+  begin
+    If LeftIdx < RightIdx then
+      begin
+        Exchange((LeftIdx + RightIdx) shr 1,RightIdx);
+        Idx := LeftIdx;
+        For i := LeftIdx to Pred(RightIdx) do
+          If CompareItems(RightIdx,i) > 0 then
+            begin
+              Exchange(i,idx);
+              Inc(Idx);
+            end;
+        Exchange(Idx,RightIdx);
+        QuickSort(LeftIdx,Idx - 1);
+        QuickSort(Idx + 1,RightIdx);
+      end;
+  end;
+
+begin
+If fAssemblerMessages.Count > 1 then
+  QuickSort(0,Pred(fAssemblerMessages.Count))
+end;
+
+//------------------------------------------------------------------------------
+
 procedure TSVCAssembler.FinalizeVariables;
 var
   Addr: TSVCComp;
@@ -793,6 +848,7 @@ except
     end
   else raise;
 end;
+SortMessages;
 end;
 
 //------------------------------------------------------------------------------
