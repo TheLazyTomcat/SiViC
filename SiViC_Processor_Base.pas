@@ -34,6 +34,10 @@ const
   SVC_PCS_INFOPAGE_MEM_NVBASE_W3    = $2006;
   SVC_PCS_INFOPAGE_MEM_NVBASE_W4    = $2007;
   // Counters, timers, clocks
+  SVC_PCS_INFOPAGE_CNTR_EXEC_W1     = $3000;
+  SVC_PCS_INFOPAGE_CNTR_EXEC_W2     = $3001;
+  SVC_PCS_INFOPAGE_CNTR_EXEC_W3     = $3002;
+  SVC_PCS_INFOPAGE_CNTR_EXEC_W4     = $3003;
 
 type
   TSVCProcessor_Base = class(TSVCProcessor)
@@ -152,6 +156,11 @@ case Page of
   SVC_PCS_INFOPAGE_MEM_NVBASE_W3:     Result := 0;
   SVC_PCS_INFOPAGE_MEM_NVBASE_W4:     Result := 0;
 {$ENDIF}
+  // Counters, timers, clocks
+  SVC_PCS_INFOPAGE_CNTR_EXEC_W1:      Result := TSVCProcessorInfoData(fExecutionCount);
+  SVC_PCS_INFOPAGE_CNTR_EXEC_W2:      Result := TSVCProcessorInfoData(fExecutionCount shr 16);
+  SVC_PCS_INFOPAGE_CNTR_EXEC_W3:      Result := TSVCProcessorInfoData(fExecutionCount shr 32);
+  SVC_PCS_INFOPAGE_CNTR_EXEC_W4:      Result := TSVCProcessorInfoData(fExecutionCount shr 48);
 else
   Result := inherited GetInfoPage(Page,Param);
 end;

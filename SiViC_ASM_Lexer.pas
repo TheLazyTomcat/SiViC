@@ -13,7 +13,7 @@ const
   SVC_ASM_LEXER_CHARS_UNARYOPERATORS  = ['+','-'];
   SVC_ASM_LEXER_CHARS_IDENTIFIER      = ['a'..'z','A'..'Z','0'..'9','_','@'];
 
-type                            //      {}       (**)     /**/
+type                                   //       {}       (**)      /**/
   TSVCLexerCommentType = (lcmtNone,lcmtType1,lcmtType2,lcmtType3,lcmtType4);
   TSVCLexerTokenType   = (lttNumber,lttUnaryOp,lttIdentifier,lttGeneral,
                           lttComment,lttString,lttInvalid);

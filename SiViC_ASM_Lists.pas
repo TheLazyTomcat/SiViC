@@ -449,6 +449,20 @@ var
   Idx:            Integer;
   Indices:        array of TSVCRegisterIndex;
   Temp:           TSVCListsRegisterListItem;
+
+  Function IndexLoaded(RegIdx: TSVCRegisterIndex): Boolean;
+  var
+    ii: Integer;
+  begin
+    Result := False;
+    For ii := Low(Indices) to High(Indices) do
+      If Indices[ii] = RegIdx then
+        begin
+          Result := True;
+          Break{For ii};
+        end;
+  end;
+
 begin
 Line := TStringList.Create;
 Names := TStringList.Create;
@@ -476,7 +490,7 @@ try
               For i := 0 to Pred(Line.Count) do
                 begin
                   Idx := StrToIntDef(Line[i],-1);
-                  If (Idx >= 0) and (Idx < SVC_REG_GP_COUNT) then
+                  If (Idx >= 0) and (Idx < SVC_REG_GP_COUNT) and not IndexLoaded(Idx) then
                     begin
                       SetLength(Indices,Length(Indices) + 1);
                       Indices[High(Indices)] := TSVCRegisterIndex(Idx);

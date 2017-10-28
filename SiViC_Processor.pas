@@ -28,12 +28,12 @@ type
 type
   TSVCProcessor = class(TObject)
   private
-    fExecutionCount:      UInt64;
     fFaultClass:          String;
     fFaultMessage:        String;
     fOnBeforeInstruction: TNotifyEvent;
     fOnAfterInstruction:  TNotifyEvent;
   protected
+    fExecutionCount:      UInt64;
     // internal processor state
     fState:               TSVCProcessorState;
     fMemory:              TSVCMemory;
