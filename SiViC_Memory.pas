@@ -58,7 +58,7 @@ end;
 
 Function TSVCMemory.IsValidAddr(Address: TSVCNative): Boolean;
 begin
-Result := TMemSize(Address) < fSize;
+Result := TMemSize(Address) <= fSize;
 end;
 
 //------------------------------------------------------------------------------

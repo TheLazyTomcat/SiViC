@@ -46,24 +46,24 @@ const
   SVC_REG_IMPL_IDX_CR    = 252;
 
   // implemented bits in FLAGS register
-  SVC_REG_FLAGS_CARRY      = TSVCNative($1);
-  SVC_REG_FLAGS_PARITY     = TSVCNative($2);
-  SVC_REG_FLAGS_ZERO       = TSVCNative($4);
-  SVC_REG_FLAGS_SIGN       = TSVCNative($8);
-  SVC_REG_FLAGS_OVERFLOW   = TSVCNative($10);
-  SVC_REG_FLAGS_DIRECTION  = TSVCNative($20);
-  SVC_REG_FLAGS_INTERRUPTS = TSVCNative($40);
+  SVC_REG_FLAGS_CARRY      = TSVCNative($1);    // bit 0
+  SVC_REG_FLAGS_PARITY     = TSVCNative($2);    // bit 1
+  SVC_REG_FLAGS_ZERO       = TSVCNative($4);    // bit 2
+  SVC_REG_FLAGS_SIGN       = TSVCNative($8);    // bit 3
+  SVC_REG_FLAGS_OVERFLOW   = TSVCNative($10);   // bit 4
+  SVC_REG_FLAGS_DIRECTION  = TSVCNative($20);   // bit 5
+  SVC_REG_FLAGS_INTERRUPTS = TSVCNative($40);   // bit 6
 
   // implemented bits in control register CR
   SVC_REG_CR_INCDECCARRY = $0001;  // INC and DEC are affecting carry flag
-  SVC_REG_CR_FASTSTRING  = $0002;  // optimized string instructions
+  SVC_REG_CR_FASTSTRING  = $0002;  // optimized string instructions (MOVS*, STOS*)
   SVC_REG_CR_UNHINTERROR = $0004;  // unhandled interupt causes an error
 
   // initial values for special registers
   SVC_REG_INITVAL_IP    = $0000;
-  SVC_REG_INITVAL_FLAGS = $0040; // interrupts
+  SVC_REG_INITVAL_FLAGS = SVC_REG_FLAGS_INTERRUPTS;
   SVC_REG_INITVAL_CNTR  = $0000;
-  SVC_REG_INITVAL_CR    = $0002; // faststring
+  SVC_REG_INITVAL_CR    = SVC_REG_CR_FASTSTRING;
 
 type
   // types for GPR access

@@ -2305,7 +2305,7 @@ end;
 
 procedure TSVCProcessor_0000.Instruction_8E;   // CVTSX      reg16,  mem8
 begin
-ArgumentsDecode(False,[iatREG16,iatMEM8]);
+ArgumentsDecode(True,[iatREG16,iatMEM8]);
 TSVCSWord(GetArgPtr(0)^) := TSVCSWord(TSVCSByte(GetArgVal(1)));
 end;
 
@@ -2313,7 +2313,7 @@ end;
 
 procedure TSVCProcessor_0000.Instruction_8F;   // CVTSX      mem16,  reg8
 begin
-ArgumentsDecode(False,[iatMEM16,iatREG8]);
+ArgumentsDecode(True,[iatMEM16,iatREG8]);
 TSVCSWord(GetArgPtr(0)^) := TSVCSWord(TSVCSByte(GetArgVal(1)));
 end;
 
@@ -2345,7 +2345,7 @@ end;
 
 procedure TSVCProcessor_0000.Instruction_D0_04;   // INC        mem16
 begin
-ArgumentsDecode(False,[iatMEM16]);
+ArgumentsDecode(True,[iatMEM16]);
 ImplementationINC_W;
 end;
 
@@ -2369,7 +2369,7 @@ end;
 
 procedure TSVCProcessor_0000.Instruction_D0_07;   // DEC        mem8
 begin
-ArgumentsDecode(False,[iatMEM8]);
+ArgumentsDecode(True,[iatMEM8]);
 ImplementationDEC_B;
 end;
 
@@ -2377,7 +2377,7 @@ end;
 
 procedure TSVCProcessor_0000.Instruction_D0_08;   // DEC        mem16
 begin
-ArgumentsDecode(False,[iatMEM16]);
+ArgumentsDecode(True,[iatMEM16]);
 ImplementationDEC_W;
 end;
  
@@ -2796,7 +2796,7 @@ begin
 ArgumentsDecode(True,[iatREG16,iatREG16,iatIMM16]);
 TSVCWord(GetArgPtr(1)^) := FlaggedMUL_W(TSVCWord(GetArgVal(1)),TSVCWord(GetArgVal(2)),TSVCWord(GetArgPtr(0)^));
 end;
-  
+
 //------------------------------------------------------------------------------
 
 procedure TSVCProcessor_0000.Instruction_D0_3B;   // MUL        reg8,   reg8,   reg8
@@ -4819,7 +4819,7 @@ var
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 Addr := TSVCNative(TSVCComp(GetArgAddr(0)) + TSVCComp(TSVCByte(GetArgVal(1)) shr 3));
-If fMemory.IsValidAddr(Addr) then
+If fMemory.IsValidArea(Addr,SVC_SZ_BYTE) then
   SetFlagValue(SVC_REG_FLAGS_CARRY,BT(TSVCByte(fMemory.AddrPtr(Addr)^),UInt8(TSVCByte(GetArgVal(1)) and $7)))
 else
   raise ESVCInterruptException.Create(SVC_EXCEPTION_MEMORYACCESS,Addr);
@@ -4847,7 +4847,7 @@ var
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 Addr := TSVCNative(TSVCComp(GetArgAddr(0)) + TSVCComp(TSVCByte(GetArgVal(1)) shr 3));
-If fMemory.IsValidAddr(Addr) then
+If fMemory.IsValidArea(Addr,SVC_SZ_BYTE) then
   SetFlagValue(SVC_REG_FLAGS_CARRY,BT(TSVCByte(fMemory.AddrPtr(Addr)^),UInt8(TSVCByte(GetArgVal(1)) and $7)))
 else
   raise ESVCInterruptException.Create(SVC_EXCEPTION_MEMORYACCESS,Addr);
@@ -4907,7 +4907,7 @@ var
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 Addr := TSVCNative(TSVCComp(GetArgAddr(0)) + TSVCComp(TSVCByte(GetArgVal(1)) shr 3));
-If fMemory.IsValidAddr(Addr) then
+If fMemory.IsValidArea(Addr,SVC_SZ_BYTE) then
   SetFlagValue(SVC_REG_FLAGS_CARRY,BTS(TSVCByte(fMemory.AddrPtr(Addr)^),UInt8(TSVCByte(GetArgVal(1)) and $7)))
 else
   raise ESVCInterruptException.Create(SVC_EXCEPTION_MEMORYACCESS,Addr);
@@ -4935,7 +4935,7 @@ var
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 Addr := TSVCNative(TSVCComp(GetArgAddr(0)) + TSVCComp(TSVCByte(GetArgVal(1)) shr 3));
-If fMemory.IsValidAddr(Addr) then
+If fMemory.IsValidArea(Addr,SVC_SZ_BYTE) then
   SetFlagValue(SVC_REG_FLAGS_CARRY,BTS(TSVCByte(fMemory.AddrPtr(Addr)^),UInt8(TSVCByte(GetArgVal(1)) and $7)))
 else
   raise ESVCInterruptException.Create(SVC_EXCEPTION_MEMORYACCESS,Addr);
@@ -4995,7 +4995,7 @@ var
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 Addr := TSVCNative(TSVCComp(GetArgAddr(0)) + TSVCComp(TSVCByte(GetArgVal(1)) shr 3));
-If fMemory.IsValidAddr(Addr) then
+If fMemory.IsValidArea(Addr,SVC_SZ_BYTE) then
   SetFlagValue(SVC_REG_FLAGS_CARRY,BTR(TSVCByte(fMemory.AddrPtr(Addr)^),UInt8(TSVCByte(GetArgVal(1)) and $7)))
 else
   raise ESVCInterruptException.Create(SVC_EXCEPTION_MEMORYACCESS,Addr);
@@ -5023,7 +5023,7 @@ var
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 Addr := TSVCNative(TSVCComp(GetArgAddr(0)) + TSVCComp(TSVCByte(GetArgVal(1)) shr 3));
-If fMemory.IsValidAddr(Addr) then
+If fMemory.IsValidArea(Addr,SVC_SZ_BYTE) then
   SetFlagValue(SVC_REG_FLAGS_CARRY,BTR(TSVCByte(fMemory.AddrPtr(Addr)^),UInt8(TSVCByte(GetArgVal(1)) and $7)))
 else
   raise ESVCInterruptException.Create(SVC_EXCEPTION_MEMORYACCESS,Addr);
@@ -5083,7 +5083,7 @@ var
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 Addr := TSVCNative(TSVCComp(GetArgAddr(0)) + TSVCComp(TSVCByte(GetArgVal(1)) shr 3));
-If fMemory.IsValidAddr(Addr) then
+If fMemory.IsValidArea(Addr,SVC_SZ_BYTE) then
   SetFlagValue(SVC_REG_FLAGS_CARRY,BTC(TSVCByte(fMemory.AddrPtr(Addr)^),UInt8(TSVCByte(GetArgVal(1)) and $7)))
 else
   raise ESVCInterruptException.Create(SVC_EXCEPTION_MEMORYACCESS,Addr);
@@ -5111,7 +5111,7 @@ var
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 Addr := TSVCNative(TSVCComp(GetArgAddr(0)) + TSVCComp(TSVCByte(GetArgVal(1)) shr 3));
-If fMemory.IsValidAddr(Addr) then
+If fMemory.IsValidArea(Addr,SVC_SZ_BYTE) then
   SetFlagValue(SVC_REG_FLAGS_CARRY,BTC(TSVCByte(fMemory.AddrPtr(Addr)^),UInt8(TSVCByte(GetArgVal(1)) and $7)))
 else
   raise ESVCInterruptException.Create(SVC_EXCEPTION_MEMORYACCESS,Addr);

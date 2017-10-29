@@ -152,9 +152,9 @@ type
     constructor Create;
     destructor Destroy; override;
     procedure Clear(FreeMem: Boolean = False); virtual;    
-    procedure Assemble_Init; virtual;
-    Function Assemble_Update(const Line: String): Boolean; virtual;
-    Function Assemble_Final: Boolean; virtual;
+    procedure AssembleInit; virtual;
+    Function AssembleUpdate(const Line: String): Boolean; virtual;
+    Function AssembleFinal: Boolean; virtual;
     Function Assemble(const SourceCode: TStrings; MaxErrorCount: Integer = -1): Boolean; virtual;
     property SystemValues[Index: Integer]: TSVCAssemblerItem_Sys read GetSys;
     property Constants[Index: Integer]: TSVCAssemblerItem_Const read GetConst;
@@ -787,7 +787,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-procedure TSVCAssembler.Assemble_Init;
+procedure TSVCAssembler.AssembleInit;
 begin
 Clear;
 fParser.Initialize;
@@ -799,7 +799,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function TSVCAssembler.Assemble_Update(const Line: String): Boolean;
+Function TSVCAssembler.AssembleUpdate(const Line: String): Boolean;
 var
   i:  Integer;
 begin
@@ -822,7 +822,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function TSVCAssembler.Assemble_Final: Boolean;
+Function TSVCAssembler.AssembleFinal: Boolean;
 var
   i:  Integer;
 begin
@@ -860,10 +860,10 @@ var
 begin
 ErrCount := 0;
 Result := True;
-Assemble_Init;
+AssembleInit;
 For i := 0 to Pred(SourceCode.Count) do
   begin
-    If not Assemble_Update(SourceCode[i]) then
+    If not AssembleUpdate(SourceCode[i]) then
       Inc(ErrCount);
     If ErrCount > 0 then
       If (MaxErrorCount >= 0) and (ErrCount >= MaxErrorCount) then
@@ -873,7 +873,7 @@ For i := 0 to Pred(SourceCode.Count) do
         end;
   end;
 If Result then
-  Result := Assemble_Final;
+  Result := AssembleFinal;
 end;
 
 

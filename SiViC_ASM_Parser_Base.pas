@@ -41,15 +41,16 @@ type
   end;
 
 const
-  SVC_ASM_PARSER_MODIFIERS: array[0..15] of TSVCParserModifiersItem = (
+  SVC_ASM_PARSER_MODIFIERS: array[0..16] of TSVCParserModifiersItem = (
     (Str: 'byte';   Modifier: pmodByte),(Str: 'short';  Modifier: pmodByte),
     (Str: 'uint8';  Modifier: pmodByte),(Str: 'int8';   Modifier: pmodByte),
     (Str: 'word';   Modifier: pmodWord),(Str: 'small';  Modifier: pmodWord),
     (Str: 'uint16'; Modifier: pmodWord),(Str: 'int16';  Modifier: pmodWord),
     (Str: 'long';   Modifier: pmodLong),(Str: 'dword';  Modifier: pmodLong),
     (Str: 'uint32'; Modifier: pmodLong),(Str: 'int32';  Modifier: pmodLong),
-    (Str: 'quad';   Modifier: pmodQuad),(Str: 'uint64'; Modifier: pmodQuad),
-    (Str: 'int64';  Modifier: pmodQuad),(Str: 'ptr';    Modifier: pmodPtr));
+    (Str: 'quad';   Modifier: pmodQuad),(Str: 'qword';  Modifier: pmodQuad),
+    (Str: 'uint64'; Modifier: pmodQuad),(Str: 'int64';  Modifier: pmodQuad),
+    (Str: 'ptr';    Modifier: pmodPtr));
 
 type  
   ESVCParserParsingError = class(Exception);
