@@ -1,0 +1,55 @@
+================================================================================
+                                  Instructions
+================================================================================
+
+Instruction format (* marks an optional fields):
+
+  +---------+-----+-----+-----+-----+------+---------+---------+---------+---------+
+  |  *PFX   |         opcode        | *SFX |  *ARG1  |  *ARG1  |  *ARG1  |  *ARG1  |
+  +---------+-----+-----+-----+-----+------+---------+---------+---------+---------+
+
+  - whole instruction with all arguments, prefixes, etc... must fit into
+    16 bytes (the instruction window)
+  - parameter count and types are encoded implicitly per instruction
+    implementation, they are not stored explicitly
+  - maximum length of opcode is 4 bytes (see further for opcode encoding)
+  - opcode can be preceded by any number of prefixes, it is also allowed to
+    place prefix bytes into opcode itself, but it must be followed by at least
+    one opcode byte (see instruction decoding details)
+  - opcode can be followed by a suffix byte, this byte encodes condition codes
+    and/or memory addressing mode (see further)
+  - instruction can have from none to at most 4 arguments of any type, but only
+    one agrument can be an explicit memory location
+
+
+Processing of an instruction:
+
+  - instruction is first fetched (loaded) from the memory (entire instruction
+    window is loaded - if the memory does not contain enough data to fill the
+    window, zeroes are loaded instead of missing bytes)
+  - the window is then issued to execution engine
+  - execution engine first decodes the instruction (resolves paramateres,
+    condition codes, ...) and then, if decoding was successful, executes it
+
+
+
+
+--------------------------------------------------------------------------------
+
+Memory
+
+  - up to 64KiB of linear address space (addresses 0x0000 - 0xFFFF)
+  - allocated on creation, initialized to all zero
+  - size is always multiple of 256, minumal size is 256 bytes
+  - completely accessible for read and write
+  - program code is loaded to address 0x0000
+
+--------------------------------------------------------------------------------
+
+Non-volatile memory
+
+  - up to 64KiB of linear address space (addresses 0x0000 - 0xFFFF)
+  - default size is 0
+  - accessible only by special instructions (LOAD, STORE)
+
+--------------------------------------------------------------------------------

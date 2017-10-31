@@ -101,8 +101,9 @@ type
   end;
 
   TSVCAssemblerMessages = record
-    Arr:    array of TSVCAssemblerMessage;
-    Count:  Integer;
+    Arr:      array of TSVCAssemblerMessage;
+    Count:    Integer;
+    Counters: array[TSVCParserMessageType] of Integer;
   end;
 
   TSVCAssembler = class(TObject)
@@ -127,6 +128,7 @@ type
     Function GetLabel(Index: Integer): TSVCAssemblerItem_Label;
     Function GetAssemblerLine(Index: Integer): TSVCAssemblerLine;
     Function GetAssemblerMessage(Index: Integer): TSVCAssemblerMessage;
+    Function GetAssemblerMessageTypeCount(MessageType: TSVCParserMessageType): Integer;
   protected
     Function IndexOfSys(const Identifier: String): Integer; virtual;
     Function IndexOfConst(const Identifier: String): Integer; virtual;
@@ -145,6 +147,7 @@ type
     Function AddWarningMessage(const Text: String; Values: array of const): Integer; overload; virtual;
     Function AddWarningMessage(const Text: String): Integer; overload; virtual;
     procedure SortMessages; virtual;
+    procedure CountMessages; virtual;
     procedure FinalizeVariables; virtual;
     procedure FinalizeReplacements; virtual;
     procedure ParsingResultHandler(Sender: TObject; ResultType: TSVCParserResultType; Result: Pointer); virtual;
@@ -162,6 +165,7 @@ type
     property Labels[Index: Integer]: TSVCAssemblerItem_Label read GetLabel;
     property AssemblerLines[Index: Integer]: TSVCAssemblerLine read GetAssemblerLine; default;
     property AssemblerMessages[Index: Integer]: TSVCAssemblerMessage read GetAssemblerMessage;
+    property AssemblerMessageTypeCounts[MessageType: TSVCParserMessageType]: Integer read GetAssemblerMessageTypeCount;
   published
     property Lists: TSVCListManager read fLists;
     property SystemValueCount: Integer read fSystemValues.Count;
@@ -245,6 +249,14 @@ If (Index >= Low(fAssemblerMessages.Arr)) and (Index < fAssemblerMessages.Count)
   Result := fAssemblerMessages.Arr[Index]
 else
   raise Exception.CreateFmt('TSVCAssembler.GetAssemblerMessage: Index (%d) out of bounds.',[Index]);
+end;
+
+Function TSVCAssembler.GetAssemblerMessageTypeCount(MessageType: TSVCParserMessageType): Integer;
+begin
+If (MessageType >= Low(TSVCParserMessageType)) and (MessageType <= High(TSVCParserMessageType)) then
+  Result := fAssemblerMessages.Counters[MessageType]
+else
+  raise Exception.CreateFmt('TSVCAssembler.GetAssemblerMessageTypeCount: Unknown message type (%d).',[Ord(MessageType)]);
 end;
 
 //==============================================================================
@@ -536,6 +548,18 @@ end;
 
 //------------------------------------------------------------------------------
 
+procedure TSVCAssembler.CountMessages;
+var
+  i:  Integer;
+begin
+For i := Ord(Low(fAssemblerMessages.Counters)) to Ord(High(fAssemblerMessages.Counters)) do
+  fAssemblerMessages.Counters[TSVCParserMessageType(i)] := 0;
+For i := Low(fAssemblerMessages.Arr) to Pred(fAssemblerMessages.Count) do
+  Inc(fAssemblerMessages.Counters[fAssemblerMessages.Arr[i].MessageType]);
+end;
+
+//------------------------------------------------------------------------------
+
 procedure TSVCAssembler.FinalizeVariables;
 var
   Addr: TSVCComp;
@@ -772,6 +796,7 @@ fSystemValues.Count := 0;
 fConstants.Count := 0;
 fVariables.Count := 0;
 fLabels.Count := 0;
+fUnresolved.Count := 0;
 fAssemblerLines.Count := 0;
 fAssemblerMessages.Count := 0;
 If FreeMem then
@@ -780,9 +805,11 @@ If FreeMem then
     SetLength(fConstants.Arr,0);
     SetLength(fVariables.Arr,0);
     SetLength(fLabels.Arr,0);
+    SetLength(fUnresolved.Arr,0);
     SetLength(fAssemblerLines.Arr,0);
     SetLength(fAssemblerMessages.Arr,0);
   end;
+CountMessages;
 end;
 
 //------------------------------------------------------------------------------
@@ -837,13 +864,14 @@ try
         AddAssemblerMessage(BuildAssemblerMessage(pmtError,
           Format('Unresolved identifier "%s"',[fUnresolved.Arr[i].Identifier]),
           fUnresolved.Arr[i].SrcLineIdx,0));
-      Result := False;
-    end
-  else Result := True;
+    end;
+  CountMessages;
+  Result := AssemblerMessageTypeCounts[pmtError] <= 0;  
 except
   on E: ESVCAssemblerError do
     begin
       AddAssemblerMessage(BuildAssemblerMessage(pmtError,E.Message,fParsedLineIdx,0));
+      CountMessages;
       Result := False;
     end
   else raise;
@@ -872,8 +900,12 @@ For i := 0 to Pred(SourceCode.Count) do
           Break{For i};
         end;
   end;
-If Result then
-  Result := AssembleFinal;
+If not Result then
+  begin
+    CountMessages;
+    SortMessages;
+  end
+else Result := AssembleFinal;
 end;
 
 

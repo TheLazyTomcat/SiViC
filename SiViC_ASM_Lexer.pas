@@ -398,16 +398,16 @@ var
 begin
 Clear;
 fLine := Line;
-If fContinuousComment then
-  fStage := lsComment
-else
-  fStage := lsTraverse;
-fContinuousComment := False;
 fPosition := 1;
 fTokenStart := 1;
 fTokenLength := 0;
 If Length(fLine) > 0 then
   begin
+    If fContinuousComment then
+      fStage := lsComment
+    else
+      fStage := lsTraverse;
+    fContinuousComment := False;
     while (fPosition >= 1) and (fPosition <= Length(fLine)) do
       begin
         case fStage of

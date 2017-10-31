@@ -16,28 +16,28 @@ const
   SVC_PCS_INFOPAGE_CPU_ARCHITECTURE = $0001;
   SVC_PCS_INFOPAGE_CPU_REVISION     = $0002;
   // memory info
-  SVC_PCS_INFOPAGE_MEM_SIZE_W1      = $1000;
-  SVC_PCS_INFOPAGE_MEM_SIZE_W2      = $1001;
-  SVC_PCS_INFOPAGE_MEM_SIZE_W3      = $1002;
-  SVC_PCS_INFOPAGE_MEM_SIZE_W4      = $1003;
-  SVC_PCS_INFOPAGE_MEM_BASE_W1      = $1004;
-  SVC_PCS_INFOPAGE_MEM_BASE_W2      = $1005;
-  SVC_PCS_INFOPAGE_MEM_BASE_W3      = $1006;
-  SVC_PCS_INFOPAGE_MEM_BASE_W4      = $1007;
+  SVC_PCS_INFOPAGE_MEM_SIZE_W0      = $1000;
+  SVC_PCS_INFOPAGE_MEM_SIZE_W1      = $1001;
+  SVC_PCS_INFOPAGE_MEM_SIZE_W2      = $1002;
+  SVC_PCS_INFOPAGE_MEM_SIZE_W3      = $1003;
+  SVC_PCS_INFOPAGE_MEM_BASE_W0      = $1004;
+  SVC_PCS_INFOPAGE_MEM_BASE_W1      = $1005;
+  SVC_PCS_INFOPAGE_MEM_BASE_W2      = $1006;
+  SVC_PCS_INFOPAGE_MEM_BASE_W3      = $1007;
   // NV memory info
-  SVC_PCS_INFOPAGE_MEM_NVSIZE_W1    = $2000;
-  SVC_PCS_INFOPAGE_MEM_NVSIZE_W2    = $2001;
-  SVC_PCS_INFOPAGE_MEM_NVSIZE_W3    = $2002;
-  SVC_PCS_INFOPAGE_MEM_NVSIZE_W4    = $2003;
-  SVC_PCS_INFOPAGE_MEM_NVBASE_W1    = $2004;
-  SVC_PCS_INFOPAGE_MEM_NVBASE_W2    = $2005;
-  SVC_PCS_INFOPAGE_MEM_NVBASE_W3    = $2006;
-  SVC_PCS_INFOPAGE_MEM_NVBASE_W4    = $2007;
+  SVC_PCS_INFOPAGE_MEM_NVSIZE_W0    = $2000;
+  SVC_PCS_INFOPAGE_MEM_NVSIZE_W1    = $2001;
+  SVC_PCS_INFOPAGE_MEM_NVSIZE_W2    = $2002;
+  SVC_PCS_INFOPAGE_MEM_NVSIZE_W3    = $2003;
+  SVC_PCS_INFOPAGE_MEM_NVBASE_W0    = $2004;
+  SVC_PCS_INFOPAGE_MEM_NVBASE_W1    = $2005;
+  SVC_PCS_INFOPAGE_MEM_NVBASE_W2    = $2006;
+  SVC_PCS_INFOPAGE_MEM_NVBASE_W3    = $2007;
   // Counters, timers, clocks
-  SVC_PCS_INFOPAGE_CNTR_EXEC_W1     = $3000;
-  SVC_PCS_INFOPAGE_CNTR_EXEC_W2     = $3001;
-  SVC_PCS_INFOPAGE_CNTR_EXEC_W3     = $3002;
-  SVC_PCS_INFOPAGE_CNTR_EXEC_W4     = $3003;
+  SVC_PCS_INFOPAGE_CNTR_EXEC_W0     = $3000;
+  SVC_PCS_INFOPAGE_CNTR_EXEC_W1     = $3001;
+  SVC_PCS_INFOPAGE_CNTR_EXEC_W2     = $3002;
+  SVC_PCS_INFOPAGE_CNTR_EXEC_W3     = $3003;
 
 type
   TSVCProcessor_Base = class(TSVCProcessor)
@@ -125,42 +125,42 @@ case Page of
   // CPU info
   SVC_PCS_INFOPAGE_CPU_ARCHITECTURE:  Result := TSVCProcessorInfoData($57C0);
   // memory info
-  SVC_PCS_INFOPAGE_MEM_SIZE_W1:       Result := TSVCProcessorInfoData(fMemory.Size);
-  SVC_PCS_INFOPAGE_MEM_SIZE_W2:       Result := TSVCProcessorInfoData(fMemory.Size shr 16);
-  SVC_PCS_INFOPAGE_MEM_BASE_W1:       Result := TSVCProcessorInfoData({%H-}PtrUInt(fMemory.Memory));
-  SVC_PCS_INFOPAGE_MEM_BASE_W2:       Result := TSVCProcessorInfoData({%H-}PtrUInt(fMemory.Memory) shr 16);
+  SVC_PCS_INFOPAGE_MEM_SIZE_W0:       Result := TSVCProcessorInfoData(fMemory.Size);
+  SVC_PCS_INFOPAGE_MEM_SIZE_W1:       Result := TSVCProcessorInfoData(fMemory.Size shr 16);
+  SVC_PCS_INFOPAGE_MEM_BASE_W0:       Result := TSVCProcessorInfoData({%H-}PtrUInt(fMemory.Memory));
+  SVC_PCS_INFOPAGE_MEM_BASE_W1:       Result := TSVCProcessorInfoData({%H-}PtrUInt(fMemory.Memory) shr 16);
 {$IFDEF 64bit}
-  SVC_PCS_INFOPAGE_MEM_SIZE_W3:       Result := TSVCProcessorInfoData(fMemory.Size shr 32);
-  SVC_PCS_INFOPAGE_MEM_SIZE_W4:       Result := TSVCProcessorInfoData(fMemory.Size shr 48);
-  SVC_PCS_INFOPAGE_MEM_BASE_W3:       Result := TSVCProcessorInfoData({%H-}PtrUInt(fMemory.Memory) shr 32);
-  SVC_PCS_INFOPAGE_MEM_BASE_W4:       Result := TSVCProcessorInfoData({%H-}PtrUInt(fMemory.Memory) shr 48);
+  SVC_PCS_INFOPAGE_MEM_SIZE_W2:       Result := TSVCProcessorInfoData(fMemory.Size shr 32);
+  SVC_PCS_INFOPAGE_MEM_SIZE_W3:       Result := TSVCProcessorInfoData(fMemory.Size shr 48);
+  SVC_PCS_INFOPAGE_MEM_BASE_W2:       Result := TSVCProcessorInfoData({%H-}PtrUInt(fMemory.Memory) shr 32);
+  SVC_PCS_INFOPAGE_MEM_BASE_W3:       Result := TSVCProcessorInfoData({%H-}PtrUInt(fMemory.Memory) shr 48);
 {$ELSE}
+  SVC_PCS_INFOPAGE_MEM_SIZE_W2:       Result := 0;
   SVC_PCS_INFOPAGE_MEM_SIZE_W3:       Result := 0;
-  SVC_PCS_INFOPAGE_MEM_SIZE_W4:       Result := 0;
+  SVC_PCS_INFOPAGE_MEM_BASE_W2:       Result := 0;
   SVC_PCS_INFOPAGE_MEM_BASE_W3:       Result := 0;
-  SVC_PCS_INFOPAGE_MEM_BASE_W4:       Result := 0;
 {$ENDIF}
   // non-volatile memory info
-  SVC_PCS_INFOPAGE_MEM_NVSIZE_W1:     Result := TSVCProcessorInfoData(fNVMemory.Size);
-  SVC_PCS_INFOPAGE_MEM_NVSIZE_W2:     Result := TSVCProcessorInfoData(fNVMemory.Size shr 16);
-  SVC_PCS_INFOPAGE_MEM_NVBASE_W1:     Result := TSVCProcessorInfoData({%H-}PtrUInt(fNVMemory.Memory));
-  SVC_PCS_INFOPAGE_MEM_NVBASE_W2:     Result := TSVCProcessorInfoData({%H-}PtrUInt(fNVMemory.Memory) shr 16);
+  SVC_PCS_INFOPAGE_MEM_NVSIZE_W0:     Result := TSVCProcessorInfoData(fNVMemory.Size);
+  SVC_PCS_INFOPAGE_MEM_NVSIZE_W1:     Result := TSVCProcessorInfoData(fNVMemory.Size shr 16);
+  SVC_PCS_INFOPAGE_MEM_NVBASE_W0:     Result := TSVCProcessorInfoData({%H-}PtrUInt(fNVMemory.Memory));
+  SVC_PCS_INFOPAGE_MEM_NVBASE_W1:     Result := TSVCProcessorInfoData({%H-}PtrUInt(fNVMemory.Memory) shr 16);
 {$IFDEF 64bit}
-  SVC_PCS_INFOPAGE_MEM_NVSIZE_W3:     Result := TSVCProcessorInfoData(fNVMemory.Size shr 32);
-  SVC_PCS_INFOPAGE_MEM_NVSIZE_W4:     Result := TSVCProcessorInfoData(fNVMemory.Size shr 48);
-  SVC_PCS_INFOPAGE_MEM_NVBASE_W3:     Result := TSVCProcessorInfoData({%H-}PtrUInt(fNVMemory.Memory) shr 32);
-  SVC_PCS_INFOPAGE_MEM_NVBASE_W4:     Result := TSVCProcessorInfoData({%H-}PtrUInt(fNVMemory.Memory) shr 48);
+  SVC_PCS_INFOPAGE_MEM_NVSIZE_W2:     Result := TSVCProcessorInfoData(fNVMemory.Size shr 32);
+  SVC_PCS_INFOPAGE_MEM_NVSIZE_W3:     Result := TSVCProcessorInfoData(fNVMemory.Size shr 48);
+  SVC_PCS_INFOPAGE_MEM_NVBASE_W2:     Result := TSVCProcessorInfoData({%H-}PtrUInt(fNVMemory.Memory) shr 32);
+  SVC_PCS_INFOPAGE_MEM_NVBASE_W3:     Result := TSVCProcessorInfoData({%H-}PtrUInt(fNVMemory.Memory) shr 48);
 {$ELSE}
+  SVC_PCS_INFOPAGE_MEM_NVSIZE_W2:     Result := 0;
   SVC_PCS_INFOPAGE_MEM_NVSIZE_W3:     Result := 0;
-  SVC_PCS_INFOPAGE_MEM_NVSIZE_W4:     Result := 0;
+  SVC_PCS_INFOPAGE_MEM_NVBASE_W2:     Result := 0;
   SVC_PCS_INFOPAGE_MEM_NVBASE_W3:     Result := 0;
-  SVC_PCS_INFOPAGE_MEM_NVBASE_W4:     Result := 0;
 {$ENDIF}
   // Counters, timers, clocks
-  SVC_PCS_INFOPAGE_CNTR_EXEC_W1:      Result := TSVCProcessorInfoData(fExecutionCount);
-  SVC_PCS_INFOPAGE_CNTR_EXEC_W2:      Result := TSVCProcessorInfoData(fExecutionCount shr 16);
-  SVC_PCS_INFOPAGE_CNTR_EXEC_W3:      Result := TSVCProcessorInfoData(fExecutionCount shr 32);
-  SVC_PCS_INFOPAGE_CNTR_EXEC_W4:      Result := TSVCProcessorInfoData(fExecutionCount shr 48);
+  SVC_PCS_INFOPAGE_CNTR_EXEC_W0:      Result := TSVCProcessorInfoData(fExecutionCount);
+  SVC_PCS_INFOPAGE_CNTR_EXEC_W1:      Result := TSVCProcessorInfoData(fExecutionCount shr 16);
+  SVC_PCS_INFOPAGE_CNTR_EXEC_W2:      Result := TSVCProcessorInfoData(fExecutionCount shr 32);
+  SVC_PCS_INFOPAGE_CNTR_EXEC_W3:      Result := TSVCProcessorInfoData(fExecutionCount shr 48);
 else
   Result := inherited GetInfoPage(Page,Param);
 end;
