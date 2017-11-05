@@ -10,24 +10,38 @@ uses
 
 const
   SVC_ASM_PARSER_VAR_CHAR_DATADELIMITER = ',';
+  SVC_ASM_PARSER_VAR_CHAR_REFERENCE     = '@';
+  SVC_ASM_PARSER_VAR_CHAR_REFPLUS       = '+';
+
+  SVC_ASM_PARSER_VAR_NULLSTR = 'null';
 
 type
   TSVCParserData_Var = record
-    Identifier:   String;
-    Size:         TSVCNative;
-    Data:         TSVCByteArray;
-    ExplicitSize: Boolean;
+    Identifier:           String;
+    Size:                 TSVCNative;
+    ItemSize:             TSVCValueSize;
+    Data:                 TSVCByteArray;
+    ExplicitSize:         Boolean;
+    Referencing:          Boolean;
+    ReferenceIdentifier:  String;
+    ReferenceOffset:      TSVCNative;
   end;
 
   TSVCParserResult_Var = record
-    Identifier:   String;
-    Size:         TSVCNative;
-    Data:         TSVCByteArray;
+    Identifier:           String;
+    Size:                 TSVCNative;
+    Data:                 TSVCByteArray;
+    Referencing:          Boolean;
+    ReferenceIdentifier:  String;
+    ReferenceOffset:      TSVCNative;
   end;
   PSVCParserResult_Var = ^TSVCParserResult_Var;
 
-  TSVCParserStage_Var = (psvInitial,psvIdentifier,psvSizeLBrc,psvSize,
-                         psvSizeRBrc,psvEquals,psvData,psvDataDelim,psvFinal);
+  TSVCParserStage_Var = (psvInitial,psvIdentifier,
+                         psvSizeLBrc,psvSize,psvSizeRBrc,
+                         psvEquals,psvModifier,psvData,psvDataDelim,psvNull,
+                         psvReference,psvRefIdentifier,psvRefPlus,psvRefOffset,
+                         psvFinal);
 
   TSVCParser_Var = class(TSVCParser_Const)
   protected
@@ -43,8 +57,14 @@ type
     procedure Parse_Stage_Var_Size; virtual;
     procedure Parse_Stage_Var_SizeRBrc; virtual;
     procedure Parse_Stage_Var_Equals; virtual;
+    procedure Parse_Stage_Var_Modifier; virtual;
     procedure Parse_Stage_Var_Data; virtual;
     procedure Parse_Stage_Var_DataDelim; virtual;
+    procedure Parse_Stage_Var_Null; virtual;
+    procedure Parse_Stage_Var_Reference; virtual;
+    procedure Parse_Stage_Var_RefIdentifier; virtual;
+    procedure Parse_Stage_Var_RefPlus; virtual;
+    procedure Parse_Stage_Var_RefOffset; virtual;
     procedure Parse_Stage_Var_Final; virtual;
     procedure Parse_Stage_Var; virtual;
   end;
@@ -62,11 +82,18 @@ inherited;
 fParsingResult_Var.Identifier := '';
 fParsingResult_Var.Size := 0;
 SetLength(fParsingResult_Var.Data,0);
+fParsingResult_Var.Referencing := False;
+fParsingResult_Var.ReferenceIdentifier := '';
+fParsingResult_Var.ReferenceOffset := 0;
 fParsingStage_Var := psvInitial;
 fParsingData_Var.Identifier := '';
 fParsingData_Var.Size := 0;
-fParsingData_Var.ExplicitSize := False;
+fParsingData_Var.ItemSize := vsByte;
 SetLength(fParsingData_Var.Data,0);
+fParsingData_Var.ExplicitSize := False;
+fParsingData_Var.Referencing := False;
+fParsingData_Var.ReferenceIdentifier := '';
+fParsingData_Var.ReferenceOffset := 0;
 end;
 
 //------------------------------------------------------------------------------
@@ -106,16 +133,18 @@ procedure TSVCParser_Var.Parse_Stage_Var_Identifier;
 begin
 // psvIdentifier -> psvSizeLBrc
 // psvIdentifier -> psvEquals
+// psvIdentifier -> psvReference
 If (fLexer[fTokenIndex].TokenType = lttGeneral) and (Length(fLexer[fTokenIndex].Str) = 1) then
   begin
     case fLexer[fTokenIndex].Str[1] of
-      SVC_ASM_PARSER_CHAR_EQUALS:   fParsingStage_Var := psvEquals;
-      SVC_ASM_PARSER_CHAR_LBRACKET: fParsingStage_Var := psvSizeLBrc;
+      SVC_ASM_PARSER_CHAR_EQUALS:         fParsingStage_Var := psvEquals;
+      SVC_ASM_PARSER_CHAR_LBRACKET:       fParsingStage_Var := psvSizeLBrc;
+      SVC_ASM_PARSER_VAR_CHAR_REFERENCE:  fParsingStage_Var := psvReference;
     else
-      AddErrorMessage('"(" or "=" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+      AddErrorMessage('"(", "=" or "@" expected but "%s" found',[fLexer[fTokenIndex].Str]);
     end;
   end
-else AddErrorMessage('"(" or "=" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+else AddErrorMessage('"(", "=" or "@" expected but "%s" found',[fLexer[fTokenIndex].Str]);
 end;
 
 //------------------------------------------------------------------------------
@@ -129,13 +158,12 @@ If fLexer[fTokenIndex].TokenType = lttNumber then
   begin
     If TryStrToInt(fLexer[fTokenIndex].Str,Num) then
       begin
-        If (Num > 65535) or (Num < -32768) then
-          AddWarningMessage('Constant out of allowed range');
+        CheckConstRangeAndIssueWarning(Num,vsNative);
         fParsingData_Var.Size := TSVCNative(Num);
         fParsingData_Var.ExplicitSize := True;
         fParsingStage_Var := psvSize;
       end
-    else AddErrorMessage('Error converting number "%s"',[fLexer[fTokenIndex].Str]);
+    else AddErrorMessage('Error converting "%s" to number',[fLexer[fTokenIndex].Str]);
   end
 else AddErrorMessage('Number expected but "%s" found',[fLexer[fTokenIndex].Str]);
 end;
@@ -164,41 +192,98 @@ end;
 
 procedure TSVCParser_Var.Parse_Stage_Var_SizeRBrc;
 begin
-// psvIdentifier -> psvEquals
+// psvSizeRBrc -> psvEquals
+// psvSizeRBrc -> psvReference
 If (fLexer[fTokenIndex].TokenType = lttGeneral) and (Length(fLexer[fTokenIndex].Str) = 1) then
   begin
-    If fLexer[fTokenIndex].Str[1] = SVC_ASM_PARSER_CHAR_EQUALS then
-      fParsingStage_Var := psvEquals
+    case fLexer[fTokenIndex].Str[1] of
+      SVC_ASM_PARSER_CHAR_EQUALS:         fParsingStage_Var := psvEquals;
+      SVC_ASM_PARSER_VAR_CHAR_REFERENCE:  fParsingStage_Var := psvReference;
     else
-      AddErrorMessage('"=" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+      AddErrorMessage('"=" or "@" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+    end;
   end
-else AddErrorMessage('"=" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+else AddErrorMessage('"=" or "@" expected but "%s" found',[fLexer[fTokenIndex].Str]);
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TSVCParser_Var.Parse_Stage_Var_Equals;
 var
-  Num:  Integer;
+  Modifier: TSVCParserModifier;
 begin
+// psvEquals -> psvModifier
 // psvEquals -> psvData
+// psvEquals -> psvNull
 // psvEquals -> psvFinal
-If (fLexer[fTokenIndex].TokenType = lttNumber) then
+If (fLexer[fTokenIndex].TokenType = lttIdentifier) then
   begin
-    If TryStrToInt(fLexer[fTokenIndex].Str,Num) then
+    Modifier := ResolveModifier(fLexer[fTokenIndex].Str);
+    If Modifier <> pmodNone then
       begin
-        If (Num > 255) or (Num < -128) then
-          AddWarningMessage('Constant out of allowed range');
-        SetLength(fParsingData_Var.Data,Length(fParsingData_Var.Data) + 1);
-        fParsingData_Var.Data[High(fParsingData_Var.Data)] := TSVCByte(Num);
+        case Modifier of
+          pmodByte: fParsingData_Var.ItemSize := vsByte;
+          pmodWord: begin
+                      fParsingData_Var.ItemSize := vsWord;
+                      fParsingData_Var.Size := TSVCNative(TSVCComp(fParsingData_Var.Size) * SVC_SZ_WORD);
+                    end;
+          pmodLong: begin
+                      fParsingData_Var.ItemSize := vsLong;
+                      fParsingData_Var.Size := TSVCNative(TSVCComp(fParsingData_Var.Size) * SVC_SZ_LONG);
+                    end;
+          pmodQuad: begin
+                      fParsingData_Var.ItemSize := vsQuad;
+                      fParsingData_Var.Size := TSVCNative(TSVCComp(fParsingData_Var.Size) * SVC_SZ_QUAD);
+                    end;
+          pmodPtr:  AddErrorMessage('Size modifier expected but "%s" found',[fLexer[fTokenIndex].Str]);
+        else
+          raise Exception.CreateFmt('TSVCParser_Var.Parse_Stage_Var_Equals: Invalid modifier (%d).',[Ord(Modifier)]);
+        end;
         If fTokenIndex < Pred(fLexer.Count) then
-          fParsingStage_Var := psvData
+          fParsingStage_Var := psvModifier
         else
           fParsingStage_Var := psvFinal;
       end
-    else AddErrorMessage('Error converting number "%s"',[fLexer[fTokenIndex].Str]);
+    else Parse_Stage_Var_Modifier;
   end
-else AddErrorMessage('Number expected but "%s" found',[fLexer[fTokenIndex].Str]);
+else Parse_Stage_Var_Modifier;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCParser_Var.Parse_Stage_Var_Modifier;
+var
+  i:  Integer;
+begin
+// psvModifier -> psvData
+// psvModifier -> psvNull
+// psvModifier -> psvReference
+// psvModifier -> psvFinal
+If (fLexer[fTokenIndex].TokenType = lttIdentifier) then
+  begin
+    If AnsiSameText(fLexer[fTokenIndex].Str,SVC_ASM_PARSER_VAR_NULLSTR) then
+      begin
+        SetLength(fParsingData_Var.Data,fParsingData_Var.Size);
+        For i := Low(fParsingData_Var.Data) to High(fParsingData_Var.Data) do
+          fParsingData_Var.Data[i] := 0;
+        If fTokenIndex < Pred(fLexer.Count) then
+          fParsingStage_Var := psvNull
+        else
+          fParsingStage_Var := psvFinal;
+      end
+    else AddErrorMessage('Number expected but "%s" found',[fLexer[fTokenIndex].Str]);
+  end
+else If (fLexer[fTokenIndex].TokenType = lttGeneral) and (Length(fLexer[fTokenIndex].Str) = 1) then
+  begin
+    If fLexer[fTokenIndex].Str[1] = SVC_ASM_PARSER_VAR_CHAR_REFERENCE then
+      fParsingStage_Var := psvReference
+    else
+      AddErrorMessage('"@" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+  end
+else If (fLexer[fTokenIndex].TokenType = lttNumber) then
+  Parse_Stage_Var_DataDelim
+else
+  AddErrorMessage('Number, modifier or "@" expected but "%s" found',[fLexer[fTokenIndex].Str]);
 end;
 
 //------------------------------------------------------------------------------
@@ -206,23 +291,121 @@ end;
 procedure TSVCParser_Var.Parse_Stage_Var_Data;
 begin
 // psvData -> psvDataSep
+// psvData -> psvReference
 If (fLexer[fTokenIndex].TokenType = lttGeneral) and (Length(fLexer[fTokenIndex].Str) = 1) then
   begin
-    If fLexer[fTokenIndex].Str[1] = SVC_ASM_PARSER_VAR_CHAR_DATADELIMITER then
-      fParsingStage_Var := psvDataDelim
+    case fLexer[fTokenIndex].Str[1] of
+      SVC_ASM_PARSER_VAR_CHAR_DATADELIMITER:  fParsingStage_Var := psvDataDelim;
+      SVC_ASM_PARSER_VAR_CHAR_REFERENCE:      fParsingStage_Var := psvReference;
     else
-      AddErrorMessage('"," expected but "%s" found',[fLexer[fTokenIndex].Str]);
+      AddErrorMessage('"," or "@" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+    end;
   end
-else AddErrorMessage('"," expected but "%s" found',[fLexer[fTokenIndex].Str]);
+else AddErrorMessage('"," or "@" expected but "%s" found',[fLexer[fTokenIndex].Str]);
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TSVCParser_Var.Parse_Stage_Var_DataDelim;
+var
+  Num:  Int64;
 begin
 // psvDataDelim -> psvData
 // psvDataDelim -> psvFinal
-Parse_Stage_Var_Equals;
+If (fLexer[fTokenIndex].TokenType = lttNumber) then
+  begin
+    If TryStrToInt64(fLexer[fTokenIndex].Str,Num) then
+      begin
+        CheckConstRangeAndIssueWarning(Num,fParsingData_Var.ItemSize);
+        AddToArray(fParsingData_Var.Data,Num,ValueSize(fParsingData_Var.ItemSize));
+        If fTokenIndex < Pred(fLexer.Count) then
+          fParsingStage_Var := psvData
+        else
+          fParsingStage_Var := psvFinal;
+      end
+    else AddErrorMessage('Error converting "%s" to number',[fLexer[fTokenIndex].Str]);
+  end
+else AddErrorMessage('Number expected but "%s" found',[fLexer[fTokenIndex].Str]);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCParser_Var.Parse_Stage_Var_Null;
+begin
+// psvNull -> psvReference
+If (fLexer[fTokenIndex].TokenType = lttGeneral) and (Length(fLexer[fTokenIndex].Str) = 1) then
+  begin
+    If fLexer[fTokenIndex].Str[1] = SVC_ASM_PARSER_VAR_CHAR_REFERENCE then
+      fParsingStage_Var := psvReference
+    else
+      AddErrorMessage('"@" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+  end
+else AddErrorMessage('"@" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCParser_Var.Parse_Stage_Var_Reference;
+begin
+// psvReference -> psvRefIdentifier
+// psvReference -> psvFinal
+If fLexer[fTokenIndex].TokenType = lttIdentifier then
+  begin
+    fParsingData_Var.Referencing := True;
+    fParsingData_Var.ReferenceIdentifier := fLexer[fTokenIndex].Str;
+    If fTokenIndex < Pred(fLexer.Count) then
+      fParsingStage_Var := psvRefIdentifier
+    else
+      fParsingStage_Var := psvFinal;
+  end
+else AddErrorMessage('Identifier expected but "%s" found',[fLexer[fTokenIndex].Str]);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCParser_Var.Parse_Stage_Var_RefIdentifier;
+begin
+// psvRefIdentifier -> psvRefPlus
+If (fLexer[fTokenIndex].TokenType = lttGeneral) and (Length(fLexer[fTokenIndex].Str) = 1) then
+  begin
+    If fLexer[fTokenIndex].Str[1] = SVC_ASM_PARSER_VAR_CHAR_REFPLUS then
+      fParsingStage_Var := psvRefPlus
+    else
+      AddErrorMessage('"+" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+  end
+else AddErrorMessage('"+" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCParser_Var.Parse_Stage_Var_RefPlus;
+var
+  Num:  Integer;
+begin
+// psvRefPlus -> psvFinal
+If fLexer[fTokenIndex].TokenType = lttNumber then
+  begin
+    If TryStrToInt(fLexer[fTokenIndex].Str,Num) then
+      begin
+        CheckConstRangeAndIssueWarning(Num,vsNative);
+        fParsingData_Var.ReferenceOffset := TSVCNative(Num);
+        If fTokenIndex < Pred(fLexer.Count) then
+          fParsingStage_Var := psvRefOffset
+        else
+          fParsingStage_Var := psvFinal;
+      end
+    else AddErrorMessage('Error converting "%s" to number',[fLexer[fTokenIndex].Str]);
+  end
+else AddErrorMessage('Number expected but "%s" found',[fLexer[fTokenIndex].Str]);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCParser_Var.Parse_Stage_Var_RefOffset;
+begin
+// not alloved
+If fTokenIndex < fLexer.Count then
+  AddErrorMessage('End of line expected but "%s" found',[fLexer[fTokenIndex].Str]);
 end;
 
 //------------------------------------------------------------------------------
@@ -242,7 +425,9 @@ If fTokenIndex >= fLexer.Count then
               AddWarningMessage('Provided data cannot fit into declared memory, they will be truncated');
             If (Length(fParsingData_Var.Data) < fParsingData_Var.Size) and (Length(fParsingData_Var.Data) > 0) then
               AddWarningMessage('Declared size is larger than provided data, missing bytes will be undefined');
-          end;
+          end
+        else fParsingData_Var.Size := Length(fParsingData_Var.Data);
+        // create result from data
         fParsingResult_Var.Identifier := fParsingData_Var.Identifier;
         fParsingResult_Var.Size := fParsingData_Var.Size;
         If fParsingData_Var.Size < Length(fParsingData_Var.Data) then
@@ -250,7 +435,10 @@ If fTokenIndex >= fLexer.Count then
         else
           SetLength(fParsingResult_Var.Data,Length(fParsingData_Var.Data));
         For i := Low(fParsingResult_Var.Data) to High(fParsingResult_Var.Data) do
-          fParsingResult_Var.Data[i] := fParsingData_Var.Data[i];          
+          fParsingResult_Var.Data[i] := fParsingData_Var.Data[i];
+        fParsingResult_Var.Referencing := fParsingData_Var.Referencing;
+        fParsingResult_Var.ReferenceIdentifier := fParsingData_Var.ReferenceIdentifier;
+        fParsingResult_Var.ReferenceOffset := fParsingData_Var.ReferenceOffset;
         PassResult;
       finally
         fParsingStage_Var := psvInitial;
@@ -265,15 +453,21 @@ end;
 procedure TSVCParser_Var.Parse_Stage_Var;
 begin
 case fParsingStage_Var of
-  psvInitial:     Parse_Stage_Var_Initial;
-  psvIdentifier:  Parse_Stage_Var_Identifier;
-  psvSizeLBrc:    Parse_Stage_Var_SizeLBrc;
-  psvSize:        Parse_Stage_Var_Size;
-  psvSizeRBrc:    Parse_Stage_Var_SizeRBrc;
-  psvEquals:      Parse_Stage_Var_Equals;
-  psvData:        Parse_Stage_Var_Data;
-  psvDataDelim:   Parse_Stage_Var_DataDelim;
-  psvFinal:       Parse_Stage_Var_Final;
+  psvInitial:       Parse_Stage_Var_Initial;
+  psvIdentifier:    Parse_Stage_Var_Identifier;
+  psvSizeLBrc:      Parse_Stage_Var_SizeLBrc;
+  psvSize:          Parse_Stage_Var_Size;
+  psvSizeRBrc:      Parse_Stage_Var_SizeRBrc;
+  psvEquals:        Parse_Stage_Var_Equals;
+  psvModifier:      Parse_Stage_Var_Modifier;
+  psvData:          Parse_Stage_Var_Data;
+  psvDataDelim:     Parse_Stage_Var_DataDelim;
+  psvNull:          Parse_Stage_Var_Null;
+  psvReference:     Parse_Stage_Var_Reference;
+  psvRefIdentifier: Parse_Stage_Var_RefIdentifier;
+  psvRefPlus:       Parse_Stage_Var_RefPlus;
+  psvRefOffset:     Parse_Stage_Var_RefOffset;
+  psvFinal:         Parse_Stage_Var_Final;
 else
   raise Exception.CreateFmt('TSVCParser_Var.Parse_Stage_Var: Invalid parsing stage (%d).',[Ord(fParsingStage_Var)]);
 end;

@@ -54,6 +54,10 @@ Function MemMin(A,B: TMemSize): TMemSize;{$IFDEF CanInline} inline;{$ENDIF}
 
 Function BoolToByte(Val: Boolean): TSVCByte;{$IFDEF CanInline} inline;{$ENDIF}
 
+Function ValueSize(ValueSize: TSVCValueSize): TSVCNumber;
+
+procedure AddToArray(var Arr: TSVCByteArray; const Data; Size: TSVCNative);
+
 type
   TSVCCharSet = set of AnsiChar;
 
@@ -103,6 +107,34 @@ Function BoolToByte(Val: Boolean): TSVCByte;
 begin
 If Val then Result := 1
   else Result := 0;
+end;
+
+//------------------------------------------------------------------------------
+
+Function ValueSize(ValueSize: TSVCValueSize): TSVCNumber;
+begin
+case ValueSize of
+  vsByte: Result := SVC_SZ_BYTE;
+  vsWord: Result := SVC_SZ_WORD;
+  vsLong: Result := SVC_SZ_LONG;
+  vsQuad: Result := SVC_SZ_QUAD;
+else
+  Result := 0;
+end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure AddToArray(var Arr: TSVCByteArray; const Data; Size: TSVCNative);
+var
+  i:  Integer;
+begin
+If size > 0 then
+  begin
+    SetLength(Arr,Length(Arr) + Size);
+    For i := 0 to Pred(Size) do
+      Arr[Length(Arr) - Size + i] := TSVCByte(Pointer(PtrUInt(Addr(Data)) + PtrUInt(i))^);
+  end;
 end;
 
 //------------------------------------------------------------------------------

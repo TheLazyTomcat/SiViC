@@ -66,7 +66,7 @@ If (fLexer[fTokenIndex].TokenType = lttIdentifier) and IsValidIdentifier(fLexer[
     If not IsValidLabel(fLexer[fTokenIndex].Str) then
       begin
         If fLists.IsReservedWord(fLexer[fTokenIndex].Str) then
-          AddErrorMessage('Identifier expected but resrved word %s found',[AnsiLowerCase(fLexer[fTokenIndex].Str)]);
+          AddErrorMessage('Identifier expected but reserved word %s found',[AnsiLowerCase(fLexer[fTokenIndex].Str)]);
         If fLists.IndexOfPrefix(fLexer[fTokenIndex].Str) >= 0 then
           AddErrorMessage('Identifier expected but prefix %s found',[AnsiUpperCase(fLexer[fTokenIndex].Str)]);
         If fLists.IndexOfRegister(fLexer[fTokenIndex].Str) >= 0 then
@@ -133,19 +133,14 @@ If fLexer[fTokenIndex].TokenType = lttNumber then
   begin
     If TryStrToInt(fLexer[fTokenIndex].Str,Num) then
       begin
-        case fParsingData_Const.Size of
-          vsByte: If (Num > 255) or (Num < -128) then
-                    AddWarningMessage('Constant out of allowed range');
-          vsWord: If (Num > 65535) or (Num < -32768) then
-                    AddWarningMessage('Constant out of allowed range');
-        end;                    
+        CheckConstRangeAndIssueWarning(Num,fParsingData_Const.Size);
         fParsingData_Const.Value := TSVCNative(Num);
         If fTokenIndex < Pred(fLexer.Count) then
           fParsingStage_Const := pscValue
         else
           fParsingStage_Const := pscFinal;
       end
-    else AddErrorMessage('Error converting number "%s"',[fLexer[fTokenIndex].Str]);
+    else AddErrorMessage('Error converting "%s" to number',[fLexer[fTokenIndex].Str]);
   end
 else AddErrorMessage('Number expected but "%s" found',[fLexer[fTokenIndex].Str]);
 end;

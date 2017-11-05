@@ -20,9 +20,11 @@ type
   end;
 
 const
-  SVC_ASM_PARSER_DATA_INTROS: array[0..1] of TSVCParserDataIntroItem =
+  SVC_ASM_PARSER_DATA_INTROS: array[0..4] of TSVCParserDataIntroItem =
     ((Identifier: 'db'; ItemSize: vsByte),
-     (Identifier: 'dw'; ItemSize: vsWord));
+     (Identifier: 'dw'; ItemSize: vsWord),
+     (Identifier: 'dd'; ItemSize: vsLong),(Identifier: 'dl'; ItemSize: vsLong),
+     (Identifier: 'dq'; ItemSize: vsQuad));
 
 type
   TSVCParserData_Data = record
@@ -82,7 +84,7 @@ If (fLexer[fTokenIndex].TokenType = lttIdentifier) and IsValidIdentifier(fLexer[
     If IsDataIntro(fLexer[fTokenIndex].Str) then
       begin
         fParsingData_Data.ItemSize := GetDataItemSize(fLexer[fTokenIndex].Str);
-        If fParsingData_Data.ItemSize in [vsByte,vsWord] then
+        If fParsingData_Data.ItemSize <> vsUndefined then
           begin
             If fTokenIndex < Pred(fLexer.Count) then
               fParsingStage_Data := psdItemDelim
@@ -120,37 +122,22 @@ end;
 
 procedure TSVCParser_Data.Parse_Stage_Data_ItemDelim;
 var
-  Num:  Integer;
+  Num:  Int64;
 begin
 // psdItemDelim -> psdItem
 // psdItemDelim -> psdFinal
 If (fLexer[fTokenIndex].TokenType = lttNumber) then
   begin
-    If TryStrToInt(fLexer[fTokenIndex].Str,Num) then
+    If TryStrToInt64(fLexer[fTokenIndex].Str,Num) then
       begin
-        case fParsingData_Data.ItemSize of
-          vsByte: begin
-                    If (Num > 255) or (Num < -128) then
-                      AddWarningMessage('Constant out of allowed range');
-                    SetLength(fParsingData_Data.Data,Length(fParsingData_Data.Data) + 1);
-                    fParsingData_Data.Data[High(fParsingData_Data.Data)] := TSVCByte(Num);
-                  end;
-          vsWord: begin
-                    If (Num > 65535) or (Num < -32768) then
-                      AddWarningMessage('Constant out of allowed range');
-                    SetLength(fParsingData_Data.Data,Length(fParsingData_Data.Data) + 2);
-                    fParsingData_Data.Data[High(fParsingData_Data.Data) - 1] := TSVCByte(Num);
-                    fParsingData_Data.Data[High(fParsingData_Data.Data)] := TSVCByte(Num shr 8);
-                  end;
-        else
-          raise Exception.CreateFmt('TSVCParser_Data.Parse_Stage_Data_ItemDelim: Invalid item size (%d)',[Ord(fParsingData_Data.ItemSize)]);
-        end;
+        CheckConstRangeAndIssueWarning(Num,fParsingData_Data.ItemSize);
+        AddToArray(fParsingData_Data.Data,Num,ValueSize(fParsingData_Data.ItemSize));
         If fTokenIndex < Pred(fLexer.Count) then
           fParsingStage_Data := psdItem
         else
           fParsingStage_Data := psdFinal;
       end
-    else AddErrorMessage('Error converting number "%s"',[fLexer[fTokenIndex].Str]);
+    else AddErrorMessage('Error converting "%s" to number',[fLexer[fTokenIndex].Str]);
   end
 else AddErrorMessage('Number expected but "%s" found',[fLexer[fTokenIndex].Str]);
 end;

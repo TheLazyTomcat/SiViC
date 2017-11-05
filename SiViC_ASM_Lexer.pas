@@ -12,6 +12,7 @@ const
   SVC_ASM_LEXER_CHARS_NUMBER          = ['0'..'9','a'..'f','A'..'F','x','X'];
   SVC_ASM_LEXER_CHARS_UNARYOPERATORS  = ['+','-'];
   SVC_ASM_LEXER_CHARS_IDENTIFIER      = ['a'..'z','A'..'Z','0'..'9','_','@'];
+  SVC_ASM_LEXER_CHARS_INVAL_1_IDENT   = ['_','@'];
 
 type                                   //       {}       (**)      /**/
   TSVCLexerCommentType = (lcmtNone,lcmtType1,lcmtType2,lcmtType3,lcmtType4);
@@ -436,18 +437,20 @@ If Length(fLine) > 0 then
   end;
 {
   check whether there are invalid tokens, change unary operators that are not
-  combined with numbers to general tokens
+  combined with numbers to general tokens, change one-char identifiers "@" and
+  "_" to general
 }
 Result := True;
 For i := 0 to Pred(fTokens.Count) do
-  begin
-    If fTokens.Arr[i].TokenType = lttUnaryOp then
-      fTokens.Arr[i].TokenType := lttGeneral;
-    If fTokens.Arr[i].TokenType = lttInvalid then
-      begin
-        Result := False;
-        Break{For i};
-      end;
+  case fTokens.Arr[i].TokenType of
+    lttUnaryOp:     fTokens.Arr[i].TokenType := lttGeneral;
+    lttIdentifier:  If Length(fTokens.Arr[i].Str) = 1 then
+                      If CharInSet(fTokens.Arr[i].Str[1],SVC_ASM_LEXER_CHARS_INVAL_1_IDENT) then
+                        fTokens.Arr[i].TokenType := lttGeneral;
+    lttInvalid:     begin
+                      Result := False;
+                      Break{For i};
+                    end;
   end;
 end;
 

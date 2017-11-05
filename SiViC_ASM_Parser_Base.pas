@@ -6,6 +6,7 @@ interface
 
 uses
   SysUtils,
+  SiViC_Common,
   SiViC_ASM_Lists,
   SiViC_ASM_Lexer;
 
@@ -46,9 +47,9 @@ const
     (Str: 'uint8';  Modifier: pmodByte),(Str: 'int8';   Modifier: pmodByte),
     (Str: 'word';   Modifier: pmodWord),(Str: 'small';  Modifier: pmodWord),
     (Str: 'uint16'; Modifier: pmodWord),(Str: 'int16';  Modifier: pmodWord),
-    (Str: 'long';   Modifier: pmodLong),(Str: 'dword';  Modifier: pmodLong),
+    (Str: 'dword';  Modifier: pmodLong),(Str: 'long';   Modifier: pmodLong),
     (Str: 'uint32'; Modifier: pmodLong),(Str: 'int32';  Modifier: pmodLong),
-    (Str: 'quad';   Modifier: pmodQuad),(Str: 'qword';  Modifier: pmodQuad),
+    (Str: 'qword';  Modifier: pmodQuad),(Str: 'quad';   Modifier: pmodQuad),
     (Str: 'uint64'; Modifier: pmodQuad),(Str: 'int64';  Modifier: pmodQuad),
     (Str: 'ptr';    Modifier: pmodPtr));
 
@@ -71,6 +72,7 @@ type
     Function AddErrorMessage(const Text: String; Position: Integer = -1): Integer; overload; virtual;
     Function AddWarningMessage(const Text: String; Values: array of const; Position: Integer = -1): Integer; overload; virtual;
     Function AddWarningMessage(const Text: String; Position: Integer = -1): Integer; overload; virtual;
+    procedure CheckConstRangeAndIssueWarning(Value: TSVCSQuad; ValueSize: TSVCValueSize); virtual;
     procedure ParsingChangeRequest(RequestID: Integer); virtual; abstract;
     procedure InitializeParsing; virtual;
     procedure PassResult; virtual; abstract;
@@ -78,6 +80,7 @@ type
     class Function ResolveModifier(const Str: String): TSVCParserModifier; virtual;
     class Function IsValidIdentifier(const Identifier: String): Boolean; virtual;
     class Function IsValidLabel(const Identifier: String): Boolean; virtual;
+    class Function CheckRange(Value: TSVCSQuad; ValueSize: TSVCValueSize): Boolean; virtual;
     constructor Create(Lists: TSVCListManager = nil);
     destructor Destroy; override;
     procedure Initialize; virtual;
@@ -89,9 +92,6 @@ type
   end;
 
 implementation
-
-uses
-  SiViC_Common;
 
 Function TSVCParser_Base.GetMessage(Index: Integer): TSVCParserMessage;
 begin
@@ -160,6 +160,14 @@ end;
 
 //------------------------------------------------------------------------------
 
+procedure TSVCParser_Base.CheckConstRangeAndIssueWarning(Value: TSVCSQuad; ValueSize: TSVCValueSize);
+begin
+If not CheckRange(Value,ValueSize) then
+  AddWarningMessage('Constant out of allowed range');
+end;
+
+//------------------------------------------------------------------------------
+
 procedure TSVCParser_Base.InitializeParsing;
 begin
 fTokenIndex := 0;
@@ -198,6 +206,20 @@ If Length(Identifier) > 1 then
   Result := Identifier[1] = SVC_ASM_PARSER_CHAR_LABELSTART
 else
   Result := False;
+end;
+
+//------------------------------------------------------------------------------
+
+class Function TSVCParser_Base.CheckRange(Value: TSVCSQuad; ValueSize: TSVCValueSize): Boolean;
+begin
+case ValueSize of
+  vsByte: Result := ((Value <= High(TSVCUByte)) and (Value >= Low(TSVCSByte)));
+  vsWord: Result := ((Value <= High(TSVCUWord)) and (Value >= Low(TSVCSWord)));
+  vsLong: Result := ((Value <= High(TSVCULong)) and (Value >= Low(TSVCSLong)));
+  vsQuad: Result := True;
+else
+  raise Exception.CreateFmt('TSVCParser_Base.CheckRange: Unknown value size (%d).',[Ord(ValueSize)]);
+end;
 end;
 
 //------------------------------------------------------------------------------

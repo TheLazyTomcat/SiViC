@@ -2,7 +2,7 @@
                                   Instructions
 ================================================================================
 
-Instruction format (* marks an optional fields):
+Instruction format (* marks an optional field):
 
   +---------+-----+-----+-----+-----+------+---------+---------+---------+---------+
   |  *PFX   |         opcode        | *SFX |  *ARG1  |  *ARG1  |  *ARG1  |  *ARG1  |
@@ -40,7 +40,7 @@ Memory
 
   - up to 64KiB of linear address space (addresses 0x0000 - 0xFFFF)
   - allocated on creation, initialized to all zero
-  - size is always multiple of 256, minumal size is 256 bytes
+  - size is always multiple of 256, minimal size is 256 bytes
   - completely accessible for read and write
   - program code is loaded to address 0x0000
 
@@ -50,6 +50,6 @@ Non-volatile memory
 
   - up to 64KiB of linear address space (addresses 0x0000 - 0xFFFF)
   - default size is 0
-  - accessible only by special instructions (LOAD, STORE)
+  - accessible only by special instructions (LOAD, STORE, ...)
 
 --------------------------------------------------------------------------------

@@ -104,13 +104,14 @@ If fLexer[fTokenIndex].TokenType = lttNumber then
   begin
     If TryStrToInt(fLexer[fTokenIndex].Str,Num) then
       begin
+        CheckConstRangeAndIssueWarning(Num,vsNative);
         fParsingData_Sys.Value := TSVCNumber(Num);
         If fTokenIndex < Pred(fLexer.Count) then
           fParsingStage_Sys := pssValue
         else
           fParsingStage_Sys := pssFinal;
       end
-    else AddErrorMessage('Error converting number "%s"',[fLexer[fTokenIndex].Str]);
+    else AddErrorMessage('Error converting "%s" to number',[fLexer[fTokenIndex].Str]);
   end
 else AddErrorMessage('Number expected but "%s" found',[fLexer[fTokenIndex].Str]);
 end;

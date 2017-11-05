@@ -40,7 +40,8 @@ type
   public
     constructor Create(Lists: TSVCListManager = nil);
     destructor Destroy; override;
-    Function Unparse(InstructionWindow: TSVCInstructionWindow; HexOnly: Boolean = False): Integer; virtual;
+    Function Unparse(InstructionWindow: TSVCInstructionWindow; HexOnly: Boolean = False): Integer; overload; virtual;
+    Function Unparse(InstructionData: array of TSVCByte; HexOnly: Boolean = False): Integer; overload; virtual;
   published
     property Line: String read fUnparserData.Line;
   end;
@@ -380,7 +381,6 @@ end;
 
 //------------------------------------------------------------------------------
 
-// limit to length of passed data
 Function TSVCUnparser.Unparse(InstructionWindow: TSVCInstructionWindow; HexOnly: Boolean = False): Integer;
 begin
 fStage := usInitial;
@@ -417,6 +417,24 @@ except
     end
   else raise;
 end;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TSVCUnparser.Unparse(InstructionData: array of TSVCByte; HexOnly: Boolean = False): Integer;
+var
+  Temp: TSVCInstructionWindow;
+  i:    Integer;
+begin
+If Length(InstructionData) <= Length(Temp.Data) then
+  begin
+    FillChar(Temp.Data,Length(Temp.Data),0);
+    Temp.Position := Low(Temp.Data);
+    For i := Low(InstructionData) to High(InstructionData) do
+      Temp.Data[i] := InstructionData[i];
+    Result := Unparse(Temp,HexOnly);
+  end
+else raise Exception.CreateFmt('TSVCUnparser.Unparse: Instruction array too long (%d).',[Length(InstructionData)]);
 end;
 
 end.
