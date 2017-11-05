@@ -88,9 +88,9 @@ If (fLexer[fTokenIndex].TokenType = lttGeneral) and (Length(fLexer[fTokenIndex].
     If fLexer[fTokenIndex].Str[1] = SVC_ASM_PARSER_CHAR_EQUALS then
       fParsingStage_Sys := pssEquals
     else
-      AddErrorMessage('"=" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+      AddErrorMessage('"%s" expected but "%s" found',[SVC_ASM_PARSER_CHAR_EQUALS,fLexer[fTokenIndex].Str]);
   end
-else AddErrorMessage('"=" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+else AddErrorMessage('"%s" expected but "%s" found',[SVC_ASM_PARSER_CHAR_EQUALS,fLexer[fTokenIndex].Str]);
 end;
 
 //------------------------------------------------------------------------------

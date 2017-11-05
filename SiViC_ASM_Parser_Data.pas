@@ -113,9 +113,9 @@ If (fLexer[fTokenIndex].TokenType = lttGeneral) and (Length(fLexer[fTokenIndex].
     If fLexer[fTokenIndex].Str[1] = SVC_ASM_PARSER_DATA_CHAR_ITEMDELIMITER then
       fParsingStage_Data := psdItemDelim
     else
-      AddErrorMessage('"," expected but "%s" found',[fLexer[fTokenIndex].Str]);
+      AddErrorMessage('"%s" expected but "%s" found',[SVC_ASM_PARSER_DATA_CHAR_ITEMDELIMITER,fLexer[fTokenIndex].Str]);
   end
-else AddErrorMessage('"," expected but "%s" found',[fLexer[fTokenIndex].Str]);
+else AddErrorMessage('"%s" expected but "%s" found',[SVC_ASM_PARSER_DATA_CHAR_ITEMDELIMITER,fLexer[fTokenIndex].Str]);
 end;
 
 //------------------------------------------------------------------------------

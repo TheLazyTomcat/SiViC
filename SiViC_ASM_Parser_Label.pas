@@ -97,9 +97,9 @@ If (fLexer[fTokenIndex].TokenType = lttGeneral) and (Length(fLexer[fTokenIndex].
           end
         else fParsingStage_Label := pslFinal;
       end
-    else AddErrorMessage('":" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+    else AddErrorMessage('"%s" expected but "%s" found',[SVC_ASM_PARSER_LABEL_CHAR_TERMINATOR,fLexer[fTokenIndex].Str]);
   end
-else AddErrorMessage('":" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+else AddErrorMessage('"%s" expected but "%s" found',[SVC_ASM_PARSER_LABEL_CHAR_TERMINATOR,fLexer[fTokenIndex].Str]);
 end;
 
 //------------------------------------------------------------------------------

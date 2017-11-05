@@ -37,8 +37,7 @@ type
   end;
   PSVCParserResult_Var = ^TSVCParserResult_Var;
 
-  TSVCParserStage_Var = (psvInitial,psvIdentifier,
-                         psvSizeLBrc,psvSize,psvSizeRBrc,
+  TSVCParserStage_Var = (psvInitial,psvIdentifier,psvSizeLBrc,psvSize,psvSizeRBrc,
                          psvEquals,psvModifier,psvData,psvDataDelim,psvNull,
                          psvReference,psvRefIdentifier,psvRefPlus,psvRefOffset,
                          psvFinal);
@@ -137,14 +136,16 @@ begin
 If (fLexer[fTokenIndex].TokenType = lttGeneral) and (Length(fLexer[fTokenIndex].Str) = 1) then
   begin
     case fLexer[fTokenIndex].Str[1] of
-      SVC_ASM_PARSER_CHAR_EQUALS:         fParsingStage_Var := psvEquals;
       SVC_ASM_PARSER_CHAR_LBRACKET:       fParsingStage_Var := psvSizeLBrc;
+      SVC_ASM_PARSER_CHAR_EQUALS:         fParsingStage_Var := psvEquals;
       SVC_ASM_PARSER_VAR_CHAR_REFERENCE:  fParsingStage_Var := psvReference;
     else
-      AddErrorMessage('"(", "=" or "@" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+      AddErrorMessage('"%s", "%s" or "%s" expected but "%s" found',[SVC_ASM_PARSER_CHAR_LBRACKET,
+        SVC_ASM_PARSER_CHAR_EQUALS,SVC_ASM_PARSER_VAR_CHAR_REFERENCE,fLexer[fTokenIndex].Str]);
     end;
   end
-else AddErrorMessage('"(", "=" or "@" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+else AddErrorMessage('"%s", "%s" or "%s" expected but "%s" found',[SVC_ASM_PARSER_CHAR_LBRACKET,
+       SVC_ASM_PARSER_CHAR_EQUALS,SVC_ASM_PARSER_VAR_CHAR_REFERENCE,fLexer[fTokenIndex].Str]);
 end;
 
 //------------------------------------------------------------------------------
@@ -183,9 +184,9 @@ If (fLexer[fTokenIndex].TokenType = lttGeneral) and (Length(fLexer[fTokenIndex].
         else
           fParsingStage_Var := psvFinal;
       end
-    else AddErrorMessage('")" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+    else AddErrorMessage('"%s" expected but "%s" found',[SVC_ASM_PARSER_CHAR_RBRACKET,fLexer[fTokenIndex].Str]);
   end
-else AddErrorMessage('")" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+else AddErrorMessage('"%s" expected but "%s" found',[SVC_ASM_PARSER_CHAR_RBRACKET,fLexer[fTokenIndex].Str]);
 end;
 
 //------------------------------------------------------------------------------
@@ -200,10 +201,12 @@ If (fLexer[fTokenIndex].TokenType = lttGeneral) and (Length(fLexer[fTokenIndex].
       SVC_ASM_PARSER_CHAR_EQUALS:         fParsingStage_Var := psvEquals;
       SVC_ASM_PARSER_VAR_CHAR_REFERENCE:  fParsingStage_Var := psvReference;
     else
-      AddErrorMessage('"=" or "@" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+      AddErrorMessage('"%s" or "%s" expected but "%s" found',[SVC_ASM_PARSER_CHAR_EQUALS,
+        SVC_ASM_PARSER_VAR_CHAR_REFERENCE,fLexer[fTokenIndex].Str]);
     end;
   end
-else AddErrorMessage('"=" or "@" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+else AddErrorMessage('"%s" or "%s" expected but "%s" found',[SVC_ASM_PARSER_CHAR_EQUALS,
+       SVC_ASM_PARSER_VAR_CHAR_REFERENCE,fLexer[fTokenIndex].Str]);
 end;
 
 //------------------------------------------------------------------------------
@@ -278,12 +281,12 @@ else If (fLexer[fTokenIndex].TokenType = lttGeneral) and (Length(fLexer[fTokenIn
     If fLexer[fTokenIndex].Str[1] = SVC_ASM_PARSER_VAR_CHAR_REFERENCE then
       fParsingStage_Var := psvReference
     else
-      AddErrorMessage('"@" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+      AddErrorMessage('"%s" expected but "%s" found',[SVC_ASM_PARSER_VAR_CHAR_REFERENCE,fLexer[fTokenIndex].Str]);
   end
 else If (fLexer[fTokenIndex].TokenType = lttNumber) then
   Parse_Stage_Var_DataDelim
 else
-  AddErrorMessage('Number, modifier or "@" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+  AddErrorMessage('Number, modifier or "%s" expected but "%s" found',[SVC_ASM_PARSER_VAR_CHAR_REFERENCE,fLexer[fTokenIndex].Str]);
 end;
 
 //------------------------------------------------------------------------------
@@ -298,10 +301,12 @@ If (fLexer[fTokenIndex].TokenType = lttGeneral) and (Length(fLexer[fTokenIndex].
       SVC_ASM_PARSER_VAR_CHAR_DATADELIMITER:  fParsingStage_Var := psvDataDelim;
       SVC_ASM_PARSER_VAR_CHAR_REFERENCE:      fParsingStage_Var := psvReference;
     else
-      AddErrorMessage('"," or "@" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+      AddErrorMessage('"%s" or "%s" expected but "%s" found',[SVC_ASM_PARSER_VAR_CHAR_DATADELIMITER,
+        SVC_ASM_PARSER_VAR_CHAR_REFERENCE,fLexer[fTokenIndex].Str]);
     end;
   end
-else AddErrorMessage('"," or "@" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+else AddErrorMessage('"%s" or "%s" expected but "%s" found',[SVC_ASM_PARSER_VAR_CHAR_DATADELIMITER,
+       SVC_ASM_PARSER_VAR_CHAR_REFERENCE,fLexer[fTokenIndex].Str]);
 end;
 
 //------------------------------------------------------------------------------
@@ -338,9 +343,9 @@ If (fLexer[fTokenIndex].TokenType = lttGeneral) and (Length(fLexer[fTokenIndex].
     If fLexer[fTokenIndex].Str[1] = SVC_ASM_PARSER_VAR_CHAR_REFERENCE then
       fParsingStage_Var := psvReference
     else
-      AddErrorMessage('"@" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+      AddErrorMessage('"%s" expected but "%s" found',[SVC_ASM_PARSER_VAR_CHAR_REFERENCE,fLexer[fTokenIndex].Str]);
   end
-else AddErrorMessage('"@" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+else AddErrorMessage('"%s" expected but "%s" found',[SVC_ASM_PARSER_VAR_CHAR_REFERENCE,fLexer[fTokenIndex].Str]);
 end;
 
 //------------------------------------------------------------------------------
@@ -371,9 +376,9 @@ If (fLexer[fTokenIndex].TokenType = lttGeneral) and (Length(fLexer[fTokenIndex].
     If fLexer[fTokenIndex].Str[1] = SVC_ASM_PARSER_VAR_CHAR_REFPLUS then
       fParsingStage_Var := psvRefPlus
     else
-      AddErrorMessage('"+" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+      AddErrorMessage('"%s" expected but "%s" found',[SVC_ASM_PARSER_VAR_CHAR_REFPLUS,fLexer[fTokenIndex].Str]);
   end
-else AddErrorMessage('"+" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+else AddErrorMessage('"%s" expected but "%s" found',[SVC_ASM_PARSER_VAR_CHAR_REFPLUS,fLexer[fTokenIndex].Str]);
 end;
 
 //------------------------------------------------------------------------------
