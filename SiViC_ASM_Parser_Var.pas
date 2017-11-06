@@ -38,7 +38,7 @@ type
   PSVCParserResult_Var = ^TSVCParserResult_Var;
 
   TSVCParserStage_Var = (psvInitial,psvIdentifier,psvSizeLBrc,psvSize,psvSizeRBrc,
-                         psvEquals,psvModifier,psvData,psvDataDelim,psvNull,
+                         psvEquals,psvModifier,psvData,psvDataDelim,psvNull,psvString,
                          psvReference,psvRefIdentifier,psvRefPlus,psvRefOffset,
                          psvFinal);
 
@@ -60,6 +60,7 @@ type
     procedure Parse_Stage_Var_Data; virtual;
     procedure Parse_Stage_Var_DataDelim; virtual;
     procedure Parse_Stage_Var_Null; virtual;
+    procedure Parse_Stage_Var_String; virtual;
     procedure Parse_Stage_Var_Reference; virtual;
     procedure Parse_Stage_Var_RefIdentifier; virtual;
     procedure Parse_Stage_Var_RefPlus; virtual;
@@ -72,6 +73,7 @@ implementation
 
 uses
   SysUtils,
+  StrRect,
   SiViC_ASM_Lexer,
   SiViC_ASM_Parser_Base;
 
@@ -214,42 +216,60 @@ end;
 procedure TSVCParser_Var.Parse_Stage_Var_Equals;
 var
   Modifier: TSVCParserModifier;
+  TempStr:  UTF8String;
+  i:        Integer;
 begin
 // psvEquals -> psvModifier
 // psvEquals -> psvData
 // psvEquals -> psvNull
+// psvEquals -> psvString
 // psvEquals -> psvFinal
-If (fLexer[fTokenIndex].TokenType = lttIdentifier) then
-  begin
-    Modifier := ResolveModifier(fLexer[fTokenIndex].Str);
-    If Modifier <> pmodNone then
-      begin
-        case Modifier of
-          pmodByte: fParsingData_Var.ItemSize := vsByte;
-          pmodWord: begin
-                      fParsingData_Var.ItemSize := vsWord;
-                      fParsingData_Var.Size := TSVCNative(TSVCComp(fParsingData_Var.Size) * SVC_SZ_WORD);
-                    end;
-          pmodLong: begin
-                      fParsingData_Var.ItemSize := vsLong;
-                      fParsingData_Var.Size := TSVCNative(TSVCComp(fParsingData_Var.Size) * SVC_SZ_LONG);
-                    end;
-          pmodQuad: begin
-                      fParsingData_Var.ItemSize := vsQuad;
-                      fParsingData_Var.Size := TSVCNative(TSVCComp(fParsingData_Var.Size) * SVC_SZ_QUAD);
-                    end;
-          pmodPtr:  AddErrorMessage('Size modifier expected but "%s" found',[fLexer[fTokenIndex].Str]);
-        else
-          raise Exception.CreateFmt('TSVCParser_Var.Parse_Stage_Var_Equals: Invalid modifier (%d).',[Ord(Modifier)]);
-        end;
-        If fTokenIndex < Pred(fLexer.Count) then
-          fParsingStage_Var := psvModifier
-        else
-          fParsingStage_Var := psvFinal;
-      end
-    else Parse_Stage_Var_Modifier;
-  end
-else Parse_Stage_Var_Modifier;
+case fLexer[fTokenIndex].TokenType of
+  lttIdentifier:
+    begin
+      Modifier := ResolveModifier(fLexer[fTokenIndex].Str);
+      If Modifier <> pmodNone then
+        begin
+          case Modifier of
+            pmodByte: fParsingData_Var.ItemSize := vsByte;
+            pmodWord: begin
+                        fParsingData_Var.ItemSize := vsWord;
+                        fParsingData_Var.Size := TSVCNative(TSVCComp(fParsingData_Var.Size) * SVC_SZ_WORD);
+                      end;
+            pmodLong: begin
+                        fParsingData_Var.ItemSize := vsLong;
+                        fParsingData_Var.Size := TSVCNative(TSVCComp(fParsingData_Var.Size) * SVC_SZ_LONG);
+                      end;
+            pmodQuad: begin
+                        fParsingData_Var.ItemSize := vsQuad;
+                        fParsingData_Var.Size := TSVCNative(TSVCComp(fParsingData_Var.Size) * SVC_SZ_QUAD);
+                      end;
+            pmodPtr:  AddErrorMessage('Size modifier expected but "%s" found',[fLexer[fTokenIndex].Str]);
+          else
+            raise Exception.CreateFmt('TSVCParser_Var.Parse_Stage_Var_Equals: Invalid modifier (%d).',[Ord(Modifier)]);
+          end;
+          If fTokenIndex < Pred(fLexer.Count) then
+            fParsingStage_Var := psvModifier
+          else
+            fParsingStage_Var := psvFinal;
+        end
+      else Parse_Stage_Var_Modifier;
+    end;
+  lttString:
+    begin
+      TempStr := StrToUTF8(fLexer.UnquoteString(fLexer[fTokenIndex].Str));
+      fParsingData_Var.Size := Length(TempStr);
+      SetLength(fParsingData_Var.Data,Length(TempStr));
+      For i := Low(fParsingData_Var.Data) to High(fParsingData_Var.Data) do
+        fParsingData_Var.Data[i] := TSVCByte(TempStr[i + 1]);
+      If fTokenIndex < Pred(fLexer.Count) then
+        fParsingStage_Var := psvString
+      else
+        fParsingStage_Var := psvFinal;
+    end;
+else
+  Parse_Stage_Var_Modifier;
+end;
 end;
 
 //------------------------------------------------------------------------------
@@ -286,7 +306,7 @@ else If (fLexer[fTokenIndex].TokenType = lttGeneral) and (Length(fLexer[fTokenIn
 else If (fLexer[fTokenIndex].TokenType = lttNumber) then
   Parse_Stage_Var_DataDelim
 else
-  AddErrorMessage('Number, modifier or "%s" expected but "%s" found',[SVC_ASM_PARSER_VAR_CHAR_REFERENCE,fLexer[fTokenIndex].Str]);
+  AddErrorMessage('Number or "%s" expected but "%s" found',[SVC_ASM_PARSER_VAR_CHAR_REFERENCE,fLexer[fTokenIndex].Str]);
 end;
 
 //------------------------------------------------------------------------------
@@ -346,6 +366,14 @@ If (fLexer[fTokenIndex].TokenType = lttGeneral) and (Length(fLexer[fTokenIndex].
       AddErrorMessage('"%s" expected but "%s" found',[SVC_ASM_PARSER_VAR_CHAR_REFERENCE,fLexer[fTokenIndex].Str]);
   end
 else AddErrorMessage('"%s" expected but "%s" found',[SVC_ASM_PARSER_VAR_CHAR_REFERENCE,fLexer[fTokenIndex].Str]);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCParser_Var.Parse_Stage_Var_String;
+begin
+// psvNull -> psvReference
+Parse_Stage_Var_Null;
 end;
 
 //------------------------------------------------------------------------------
@@ -468,6 +496,7 @@ case fParsingStage_Var of
   psvData:          Parse_Stage_Var_Data;
   psvDataDelim:     Parse_Stage_Var_DataDelim;
   psvNull:          Parse_Stage_Var_Null;
+  psvString:        Parse_Stage_Var_String;
   psvReference:     Parse_Stage_Var_Reference;
   psvRefIdentifier: Parse_Stage_Var_RefIdentifier;
   psvRefPlus:       Parse_Stage_Var_RefPlus;

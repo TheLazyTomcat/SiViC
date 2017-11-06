@@ -89,7 +89,7 @@ type
   TSVCListsInstructionListItem = record
     Mnemonic:   String;
     Name:       String;
-    OpCode:     array of Byte;
+    OpCode:     TSVCByteArray;
     MemSuffix:  Boolean;
     CCSuffix:   Boolean;
     CCCode:     TSVCInstructionConditionCode;

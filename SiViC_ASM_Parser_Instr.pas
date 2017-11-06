@@ -15,6 +15,8 @@ uses
 const
   SVC_ASM_PARSER_CHAR_INSTR_ARGS_DELIMITER = ',';
   SVC_ASM_PARSER_CHAR_INSTR_ARGS_MEMSTART  = '[';
+  SVC_ASM_PARSER_CHAR_INSTR_ARGS_MEMADD    = '+';
+  SVC_ASM_PARSER_CHAR_INSTR_ARGS_MEMMUL    = '*';
   SVC_ASM_PARSER_CHAR_INSTR_ARGS_MEMEND    = ']';
 
 type
@@ -32,16 +34,20 @@ type
     IndexData:        TSVCRegisterID;
     ScaleData:        String;
     ScaleIsNumber:    Boolean;
+    ScalePos:         Integer;
     DisplaceData:     String;
     DisplaceIsNumber: Boolean;
+    DisplacePos:      Integer;
     AddrMode:         TSVCInstructionAddressingMode;
   end;
 
   TSVCParserData_Instr_Argument = record
+    StartPos:       Integer;
+    ValuePos:       Integer;
     Modifiers:      TSVCParserModifiers;
     PossibleTypes:  TSVCInstructionArgumentTypes;
     DefinitiveType: TSVCInstructionArgumentType;
-    Identifiers:    array of String;
+    Identifier:     String;
     Data:           TSVCNative;
     Memory:         TSVCParserData_Instr_Argument_Mem;
   end;
@@ -53,6 +59,7 @@ type
   end;
 
   TSVCParserResult_Instr_Replacement = record
+    LinePos:    Integer;
     Identifier: String;
     ValType:    TSVCInstructionArgumentType;
     IsLabel:    Boolean;
@@ -167,7 +174,7 @@ with fParsingData_Instr.Arguments[High(fParsingData_Instr.Arguments)].Memory do
                 If fLists.Registers[Index].RegType in [rtWord,rtNative] then
                   Tokens[i].MemTokenType := mttREG
                 else
-                  AddErrorMessage('Invalid register',Tokens[i].Token.Start);
+                  AddErrorMessage('Invalid register width',Tokens[i].Token.Start);
               end
             else
               begin
@@ -181,16 +188,18 @@ with fParsingData_Instr.Arguments[High(fParsingData_Instr.Arguments)].Memory do
 
         lttGeneral:   // - - - - - - - - - - - - - - - - - - - - - - - - - - - -
           begin
-            If AnsiSameText(Tokens[i].Token.Str,'+') then
+            If AnsiSameText(Tokens[i].Token.Str,SVC_ASM_PARSER_CHAR_INSTR_ARGS_MEMADD) then
               Tokens[i].MemTokenType := mttADD
-            else If AnsiSameText(Tokens[i].Token.Str,'*') then
+            else If AnsiSameText(Tokens[i].Token.Str,SVC_ASM_PARSER_CHAR_INSTR_ARGS_MEMMUL) then
               Tokens[i].MemTokenType := mttMUL
             else
-              AddErrorMessage('"+" or "*" expected but "%s" found',[Tokens[i].Token.Str],Tokens[i].Token.Start);
+              AddErrorMessage('"%s" or "%s" expected but "%s" found',[SVC_ASM_PARSER_CHAR_INSTR_ARGS_MEMADD,
+                SVC_ASM_PARSER_CHAR_INSTR_ARGS_MEMMUL,Tokens[i].Token.Str],Tokens[i].Token.Start);
           end;
 
       else {case-else}// - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        AddErrorMessage('Identifier, number, "+" or "*" expected but "%s" found',[Tokens[i].Token.Str],Tokens[i].Token.Start);
+        AddErrorMessage('Identifier, number, "%s" or "%s" expected but "%s" found',[SVC_ASM_PARSER_CHAR_INSTR_ARGS_MEMADD,
+          SVC_ASM_PARSER_CHAR_INSTR_ARGS_MEMMUL,Tokens[i].Token.Str],Tokens[i].Token.Start);
       end;
     {--- end of For i cycle ---}  
 
@@ -199,13 +208,13 @@ with fParsingData_Instr.Arguments[High(fParsingData_Instr.Arguments)].Memory do
       If LookBack(i) in [mttIMM,mttREG] then
         begin
           If not(Tokens[i].MemTokenType in [mttADD,mttMUL]) then
-            AddErrorMessage('Syntax error',Tokens[i].Token.Start);
+            AddErrorMessage('Operator expected but "%s" found',[Tokens[i].Token.Str],Tokens[i].Token.Start);
         end
       else
         begin
           {mttINV,mttADD,mttMUL}
           If not(Tokens[i].MemTokenType in [mttIMM,mttREG]) then
-            AddErrorMessage('Syntax error',Tokens[i].Token.Start);
+            AddErrorMessage('Number, register or constant expected but "%s" found',[Tokens[i].Token.Str],Tokens[i].Token.Start);
         end;
 
     // assign tokens to individual constituents of memory addressing
@@ -241,6 +250,7 @@ with fParsingData_Instr.Arguments[High(fParsingData_Instr.Arguments)].Memory do
                   Present := Present or MEMPARTPRESENT_SCALE;
                   ScaleData := Tokens[i].Token.Str;
                   ScaleIsNumber := Tokens[i].Token.TokenType = lttNumber;
+                  ScalePos := Tokens[i].Token.Start;
                 end
               else AddErrorMessage('Memory addressing scale already assigned',Tokens[i].Token.Start);
             end
@@ -252,6 +262,7 @@ with fParsingData_Instr.Arguments[High(fParsingData_Instr.Arguments)].Memory do
                   Present := Present or MEMPARTPRESENT_DISPLACE;
                   DisplaceData := Tokens[i].Token.Str;
                   DisplaceIsNumber := Tokens[i].Token.TokenType = lttNumber;
+                  DisplacePos := Tokens[i].Token.Start;
                 end
               else AddErrorMessage('Memory addressing displacement already assigned',Tokens[i].Token.Start);
             end;
@@ -259,7 +270,7 @@ with fParsingData_Instr.Arguments[High(fParsingData_Instr.Arguments)].Memory do
         mttADD, // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         mttMUL:
           If not((LookBack(i) in [mttIMM,mttREG]) and (LookAhead(i) in [mttIMM,mttREG])) then
-            AddErrorMessage('Syntax error',Tokens[i].Token.Start);
+            AddErrorMessage('Operator needs two inputs',Tokens[i].Token.Start);
 
       else {case-else}// - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         AddErrorMessage('Invalid memory addressing token',Tokens[i].Token.Start);
@@ -277,7 +288,7 @@ with fParsingData_Instr.Arguments[High(fParsingData_Instr.Arguments)].Memory do
       14: AddrMode := 4;  // index * scale + displacement
       15: AddrMode := 7;  // base + index * scale + displacement
     else
-      AddErrorMessage('Invalid memory addressing mode',0);
+      AddErrorMessage('Invalid memory addressing mode',fParsingData_Instr.Arguments[High(fParsingData_Instr.Arguments)].ValuePos);
     end;
   end;
 end;
@@ -346,6 +357,7 @@ var
   Modifier: TSVCParserModifier;
 begin
 // psiModifier -> psiModifier, psiArgument, psiArgumentMem, psiFinal
+fParsingData_Instr.Arguments[High(fParsingData_Instr.Arguments)].Identifier := '';
 case fLexer[fTokenIndex].TokenType of
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -353,8 +365,8 @@ case fLexer[fTokenIndex].TokenType of
   lttNumber:
     If TryStrToInt(fLexer[fTokenIndex].Str,Num) then
       begin
-        If (Num > 65535) or (Num < -32768) then
-          AddWarningMessage('Constant out of allowed range');
+        fParsingData_Instr.Arguments[High(fParsingData_Instr.Arguments)].ValuePos := fLexer[fTokenIndex].Start;
+        CheckConstRangeAndIssueWarning(Num,vsNative);
         fParsingData_Instr.Arguments[High(fParsingData_Instr.Arguments)].PossibleTypes := [iatREL8,iatREL16,iatIMM8,iatIMM16];
         fParsingData_Instr.Arguments[High(fParsingData_Instr.Arguments)].Data := TSVCNative(Num);
         If fTokenIndex < Pred(fLexer.Count) then
@@ -362,7 +374,7 @@ case fLexer[fTokenIndex].TokenType of
         else
           fParsingStage_Instr := psiFinal;
       end
-    else AddErrorMessage('Error converting number "%s"',[fLexer[fTokenIndex].Str]);
+    else AddErrorMessage('Error converting "%s" to number',[fLexer[fTokenIndex].Str]);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -378,16 +390,21 @@ case fLexer[fTokenIndex].TokenType of
         Modifier := ResolveModifier(fLexer[fTokenIndex].Str);
         If Modifier <> pmodNone then
           begin
-            with fParsingData_Instr do
-              If not ((Modifier = pmodByte) and (pmodWord in Arguments[High(Arguments)].Modifiers)) or
-                     ((Modifier = pmodWord) and (pmodByte in Arguments[High(Arguments)].Modifiers)) then
-                begin
-                  Include(Arguments[High(Arguments)].Modifiers,Modifier);
-                  fParsingStage_Instr := psiModifier;
-                  Exit;
-                end
-              else AddErrorMessage('Two different size modifiers not allowed');
+            If Modifier in [pmodByte,pmodWord,pmodPtr] then
+              begin
+                with fParsingData_Instr do
+                  If not ((Modifier = pmodByte) and (pmodWord in Arguments[High(Arguments)].Modifiers)) or
+                         ((Modifier = pmodWord) and (pmodByte in Arguments[High(Arguments)].Modifiers)) then
+                    begin
+                      Include(Arguments[High(Arguments)].Modifiers,Modifier);
+                      fParsingStage_Instr := psiModifier;
+                      Exit;
+                    end
+                  else AddErrorMessage('Two different size modifiers not allowed');
+              end
+            else AddErrorMessage('Modifier %s not allowed here',[AnsiLowerCase(fLexer[fTokenIndex].Str)]);
           end;
+        fParsingData_Instr.Arguments[High(fParsingData_Instr.Arguments)].ValuePos := fLexer[fTokenIndex].Start;
         // check for register
         Index := fLists.IndexOfRegister(fLexer[fTokenIndex].Str);
         If Index >= 0 then
@@ -423,15 +440,15 @@ case fLexer[fTokenIndex].TokenType of
               fParsingData_Instr.Arguments[High(fParsingData_Instr.Arguments)].PossibleTypes := [iatREL8,iatREL16]
             else
               fParsingData_Instr.Arguments[High(fParsingData_Instr.Arguments)].PossibleTypes := [iatREL8,iatREL16,iatIMM8,iatIMM16];
-            SetLength(fParsingData_Instr.Arguments[High(fParsingData_Instr.Arguments)].Identifiers,1);
-            fParsingData_Instr.Arguments[High(fParsingData_Instr.Arguments)].Identifiers[0] := fLexer[fTokenIndex].Str;
+            fParsingData_Instr.Arguments[High(fParsingData_Instr.Arguments)].Identifier := fLexer[fTokenIndex].Str;
           end;
         If fTokenIndex < Pred(fLexer.Count) then
           fParsingStage_Instr := psiArgument
         else
           fParsingStage_Instr := psiFinal; 
       end
-    else AddErrorMessage('Identifier expected but "%s" found',[fLexer[fTokenIndex].Str]);
+    else AddErrorMessage('Identifier, number or "%s" expected but "%s" found',
+           [SVC_ASM_PARSER_CHAR_INSTR_ARGS_MEMSTART,fLexer[fTokenIndex].Str]);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -440,17 +457,21 @@ case fLexer[fTokenIndex].TokenType of
       begin
         If fLexer[fTokenIndex].Str[1] = SVC_ASM_PARSER_CHAR_INSTR_ARGS_MEMSTART then
           begin
+            fParsingData_Instr.Arguments[High(fParsingData_Instr.Arguments)].ValuePos := fLexer[fTokenIndex].Start;
             fParsingData_Instr.Arguments[High(fParsingData_Instr.Arguments)].PossibleTypes := [iatMEM8,iatMEM16,iatMEM];
             fParsingStage_Instr := psiArgumentMem;
           end
-        else AddErrorMessage('"[" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+        else AddErrorMessage('Identifier, number or "%s" expected but "%s" found',
+               [SVC_ASM_PARSER_CHAR_INSTR_ARGS_MEMSTART,fLexer[fTokenIndex].Str]);
       end
-    else AddErrorMessage('"[" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+    else AddErrorMessage('Identifier, number or "%s" expected but "%s" found',
+           [SVC_ASM_PARSER_CHAR_INSTR_ARGS_MEMSTART,fLexer[fTokenIndex].Str]);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 else {case-else}
-  AddErrorMessage('Identifier, number or "[" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+  AddErrorMessage('Identifier, number or "%s" expected but "%s" found',
+    [SVC_ASM_PARSER_CHAR_INSTR_ARGS_MEMSTART,fLexer[fTokenIndex].Str]);
 end;
 end;
 
@@ -464,9 +485,9 @@ If (fLexer[fTokenIndex].TokenType = lttGeneral) and (Length(fLexer[fTokenIndex].
     If fLexer[fTokenIndex].Str[1] = SVC_ASM_PARSER_CHAR_INSTR_ARGS_DELIMITER then
       fParsingStage_Instr := psiArgumentDelim
     else
-      AddErrorMessage('"," expected but "%s" found',[fLexer[fTokenIndex].Str])
+      AddErrorMessage('"%s" expected but "%s" found',[SVC_ASM_PARSER_CHAR_INSTR_ARGS_DELIMITER,fLexer[fTokenIndex].Str])
   end
-else AddErrorMessage('"," expected but "%s" found',[fLexer[fTokenIndex].Str]);
+else AddErrorMessage('"%s" expected but "%s" found',[SVC_ASM_PARSER_CHAR_INSTR_ARGS_DELIMITER,fLexer[fTokenIndex].Str]);
 end;
 
 //------------------------------------------------------------------------------
@@ -474,7 +495,7 @@ end;
 procedure TSVCParser_Instr.Parse_Stage_Instr_ArgumentMem;
 begin
 // psiArgumentMem -> psiArgumentMem, psiArgumentMemEnd, psiFinal
-If (fLexer[fTokenIndex].TokenType = lttGeneral) and AnsiSameText(fLexer[fTokenIndex].Str[1],SVC_ASM_PARSER_CHAR_INSTR_ARGS_MEMEND) then
+If (fLexer[fTokenIndex].TokenType = lttGeneral) and AnsiSameText(fLexer[fTokenIndex].Str,SVC_ASM_PARSER_CHAR_INSTR_ARGS_MEMEND) then
   begin
     ResolveMemoryAddressing;
     If fTokenIndex < Pred(fLexer.Count) then
@@ -492,7 +513,8 @@ else
             Tokens[High(Tokens)].Token := fLexer[fTokenIndex];
           end;
       end
-    else AddErrorMessage('Identifier, number, "+" or "*" expected but "%s" found',[fLexer[fTokenIndex].Str]);
+    else AddErrorMessage('Identifier, number, "%s" or "%s" expected but "%s" found',
+          [SVC_ASM_PARSER_CHAR_INSTR_ARGS_MEMADD,SVC_ASM_PARSER_CHAR_INSTR_ARGS_MEMMUL,fLexer[fTokenIndex].Str]);
   end;
 end;
 
@@ -510,6 +532,7 @@ procedure TSVCParser_Instr.Parse_Stage_Instr_ArgumentDelim;
 begin
 // psiArgumentDelim -> psiModifier, psiArgument, psiArgumentMem, psiFinal
 SetLength(fParsingData_Instr.Arguments,Length(fParsingData_Instr.Arguments) + 1);
+fParsingData_Instr.Arguments[High(fParsingData_Instr.Arguments)].StartPos := fLexer[fTokenIndex].Start;
 Parse_Stage_Instr_Modifier;
 end;
 
@@ -569,12 +592,12 @@ var
               // displacement is given as a number
               If TryStrToInt(Memory.DisplaceData,Num) then
                 begin
-                  If (Num > 65535) or (Num < -32768) then
-                    AddWarningMessage('Constant out of allowed range',0);
+                  If not CheckRange(Num,vsWord) then
+                    AddWarningMessage('Constant out of allowed range',Memory.DisplacePos);
                   fParsingResult_Instr.Window.Data[fParsingResult_Instr.Window.Position + Offset] := TSVCByte(Num);
                   fParsingResult_Instr.Window.Data[fParsingResult_Instr.Window.Position + Offset + 1] := TSVCByte(Num shr 8);
                 end
-              else AddErrorMessage('Error converting number "%s"',[Memory.DisplaceData],0);
+              else AddErrorMessage('Error converting "%s" to number',[Memory.DisplaceData],Memory.DisplacePos);
             end
           else
             begin
@@ -589,7 +612,7 @@ var
                 end;
             end;
         end
-      else AddErrorMessage('Syntax error',0);
+      else AddErrorMessage('Syntax error',Memory.DisplacePos);
   end;
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -604,11 +627,11 @@ var
               // scale is given as a number
               If TryStrToInt(Memory.ScaleData,Num) then
                 begin
-                  If (Num > 255) or (Num < -128) then
-                    AddWarningMessage('Constant out of allowed range',0);
+                  If not CheckRange(Num,vsByte) then
+                    AddWarningMessage('Constant out of allowed range',Memory.ScalePos);
                   fParsingResult_Instr.Window.Data[fParsingResult_Instr.Window.Position + Offset] := TSVCByte(Num);
                 end
-              else AddErrorMessage('Error converting number "%s"',[Memory.ScaleData],0);
+              else AddErrorMessage('Error converting "%s" to number',[Memory.ScaleData],Memory.ScalePos);
             end
           else
             begin
@@ -623,7 +646,7 @@ var
                 end;
             end;
         end
-      else AddErrorMessage('Syntax error',0);
+      else AddErrorMessage('Syntax error',Memory.ScalePos);
   end;
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -648,13 +671,13 @@ If fTokenIndex >= fLexer.Count then
         For i := Low(fParsingData_Instr.Arguments) to High(fParsingData_Instr.Arguments) do
           If (fParsingData_Instr.Arguments[i].PossibleTypes <= [iatREG8,iatREG16,iatNone]) and
             (fParsingData_Instr.Arguments[i].Modifiers <> []) then
-              AddErrorMessage('Modifiers not allowed for register arguments',0);
+              AddErrorMessage('Modifiers not allowed for register arguments',fParsingData_Instr.Arguments[i].StartPos);
 
         // error on PTR modifier for constant arguments
         For i := Low(fParsingData_Instr.Arguments) to High(fParsingData_Instr.Arguments) do
           If (fParsingData_Instr.Arguments[i].PossibleTypes <= [iatREL8,iatREL16,iatIMM8,iatIMM16]) and
             (pmodPtr in fParsingData_Instr.Arguments[i].Modifiers) then
-              AddErrorMessage('PTR modifier not allowed for constant arguments',0);
+              AddErrorMessage('PTR modifier not allowed for constant arguments',fParsingData_Instr.Arguments[i].StartPos);
 
         // set sizes for memory and constant arguments when size modifier is present
         For i := Low(fParsingData_Instr.Arguments) to High(fParsingData_Instr.Arguments) do
@@ -700,7 +723,7 @@ If fTokenIndex >= fLexer.Count then
         If Length(Indices) > 1 then
           AddErrorMessage('Ambiguous argument combination',0);
 
-        // set definite argument type
+        // set definitive argument type
         For i := Low(fParsingData_Instr.Arguments) to High(fParsingData_Instr.Arguments) do
           fParsingData_Instr.Arguments[i].DefinitiveType := fLists.Instructions[Indices[0]].Arguments[i];
 
@@ -717,7 +740,7 @@ If fTokenIndex >= fLexer.Count then
         If (Length(fLists.Instructions[Indices[0]].OpCode) + fParsingResult_Instr.Window.Position) > Length(fParsingResult_Instr.Window.Data) then
           AddErrorMessage('Opcode cannot fit into instruction window',0);
         For i := Low(fLists.Instructions[Indices[0]].OpCode) to High(fLists.Instructions[Indices[0]].OpCode) do
-          fParsingResult_Instr.Window.Data[fParsingResult_Instr.Window.Position + i] := TSVCByte(fLists.Instructions[Indices[0]].OpCode[i]);
+          fParsingResult_Instr.Window.Data[fParsingResult_Instr.Window.Position + i] := fLists.Instructions[Indices[0]].OpCode[i];
         fParsingResult_Instr.Window.Position := fParsingResult_Instr.Window.Position + Length(fLists.Instructions[Indices[0]].OpCode);
 
         // store suffix when needed and if it fits
@@ -755,58 +778,64 @@ If fTokenIndex >= fLexer.Count then
               iatIMM8:  // - - - - - - - - - - - - - - - - - - - - - - - - - - -
                 If fParsingResult_Instr.Window.Position < Length(fParsingResult_Instr.Window.Data) then
                   begin
-                    If Length(Identifiers) > 0 then
+                    If Length(Identifier) > 0 then
                       begin
                         // number is set by reference
                         SetLength(fParsingResult_Instr.Replacements,Length(fParsingResult_Instr.Replacements) + 1);
+                        fParsingResult_Instr.Replacements[High(fParsingResult_Instr.Replacements)].Identifier :=
+                          fParsingData_Instr.Arguments[i].Identifier;
                         with fParsingResult_Instr.Replacements[High(fParsingResult_Instr.Replacements)] do
                           begin
-                            Identifier := Identifiers[0];
+                            LinePos := ValuePos;
                             ValType := DefinitiveType;
                             IsLabel := IsValidLabel(Identifier);
                             If IsLabel and (ValType <> iatREL8) then
-                              AddErrorMessage('Label not allowed',0);
+                              AddErrorMessage('Label not allowed here',ValuePos);
                             Position := fParsingResult_Instr.Window.Position;
                           end;
                       end
                     else
                       begin
                         // number is set explicitly
-                        If (SmallInt(Data) > 255) or (SmallInt(Data) < -128) then
-                          AddWarningMessage('Constant out of allowed range',0);
+                        If not CheckRange(TSVCSNative(Data),vsByte) then
+                          AddWarningMessage('Constant out of allowed range',ValuePos);
                         fParsingResult_Instr.Window.Data[fParsingResult_Instr.Window.Position] := TSVCByte(Data);
                       end;
                     Inc(fParsingResult_Instr.Window.Position);
                   end
-                else AddErrorMessage('Argument cannot fit into instruction window',0);
+                else AddErrorMessage('Argument cannot fit into instruction window',StartPos);
 
               iatREL16,
               iatIMM16: // - - - - - - - - - - - - - - - - - - - - - - - - - - -
                 If (fParsingResult_Instr.Window.Position + 1) < Length(fParsingResult_Instr.Window.Data) then
                   begin
-                    If Length(Identifiers) > 0 then
+                    If Length(Identifier) > 0 then
                       begin
                         // number is set by reference
                         SetLength(fParsingResult_Instr.Replacements,Length(fParsingResult_Instr.Replacements) + 1);
+                        fParsingResult_Instr.Replacements[High(fParsingResult_Instr.Replacements)].Identifier :=
+                          fParsingData_Instr.Arguments[i].Identifier;
                         with fParsingResult_Instr.Replacements[High(fParsingResult_Instr.Replacements)] do
                           begin
-                            Identifier := Identifiers[0];
+                            LinePos := ValuePos;
                             ValType := DefinitiveType;
                             IsLabel := IsValidLabel(Identifier);
                             If IsLabel and (ValType <> iatREL16) then
-                              AddErrorMessage('Label not allowed',0);
+                              AddErrorMessage('Label not allowed here',ValuePos);
                             Position := fParsingResult_Instr.Window.Position;
                           end;
                       end
                     else
                       begin
                         // number is set explicitly
+                        If not CheckRange(TSVCSNative(Data),vsWord) then
+                          AddWarningMessage('Constant out of allowed range',ValuePos);
                         fParsingResult_Instr.Window.Data[fParsingResult_Instr.Window.Position] := TSVCByte(Data);
                         fParsingResult_Instr.Window.Data[fParsingResult_Instr.Window.Position + 1] := TSVCByte(Data shr 8);
                       end;
                     Inc(fParsingResult_Instr.Window.Position,2);
                   end
-                else AddErrorMessage('Argument cannot fit into instruction window',0);
+                else AddErrorMessage('Argument cannot fit into instruction window',StartPos);
 
               iatREG8,
               iatREG16: // - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -815,7 +844,7 @@ If fTokenIndex >= fLexer.Count then
                     fParsingResult_Instr.Window.Data[fParsingResult_Instr.Window.Position] := TSVCByte(Data);
                     Inc(fParsingResult_Instr.Window.Position);
                   end
-                else AddErrorMessage('Argument cannot fit into instruction window',0);
+                else AddErrorMessage('Argument cannot fit into instruction window',StartPos);
 
               iatMEM8,
               iatMEM16,
@@ -862,14 +891,14 @@ If fTokenIndex >= fLexer.Count then
                             StoreMemoryAddressingDisplacement(i,3);
                           end;
                     else
-                      AddErrorMessage('Syntax error',0);
+                      AddErrorMessage('Invalid addressing mode',StartPos);
                     end;
                     Inc(fParsingResult_Instr.Window.Position,AddressingModeLength(Memory.AddrMode));
                   end
-                else AddErrorMessage('Argument cannot fit into instruction window',0);
+                else AddErrorMessage('Argument cannot fit into instruction window',StartPos);
 
             else {case-else}// - - - - - - - - - - - - - - - - - - - - - - - - -
-              AddErrorMessage('Syntax error',0);
+              AddErrorMessage('Invalid argument type',StartPos);
             end;
 
         // result is complete, pass it
