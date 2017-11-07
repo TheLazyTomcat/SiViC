@@ -14,7 +14,8 @@ const
 
 type
   TSVCParserData_Label = record
-    Identifier: String;
+    Identifier:     String;
+    IdentifierPos:  Integer;
   end;
 
   TSVCParserResult_Label = TSVCParserData_Label;
@@ -63,6 +64,7 @@ If (fLexer[fTokenIndex].TokenType = lttIdentifier) and IsValidIdentifier(fLexer[
     If IsValidLabel(fLexer[fTokenIndex].Str) then
       begin
         fParsingData_Label.Identifier := fLexer[fTokenIndex].Str;
+        fParsingData_Label.IdentifierPos := fLexer[fTokenIndex].Start;
         fParsingStage_Label := pslIdentifier;
       end
     else

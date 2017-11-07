@@ -53,9 +53,10 @@ type
   end;
 
   TSVCParserData_Instr = record
-    Prefixes:     TSVCByteArray;
-    Instruction:  String;
-    Arguments:    array of TSVCParserData_Instr_Argument;
+    Prefixes:       TSVCByteArray;
+    Instruction:    String;
+    InstructionPos: Integer;
+    Arguments:      array of TSVCParserData_Instr_Argument;
   end;
 
   TSVCParserResult_Instr_Replacement = record
@@ -67,8 +68,9 @@ type
   end;
 
   TSVCParserResult_Instr = record
-    Window:       TSVCInstructionWindow;
-    Replacements: array of TSVCParserResult_Instr_Replacement;
+    InstructionPos: Integer;
+    Window:         TSVCInstructionWindow;
+    Replacements:   array of TSVCParserResult_Instr_Replacement;
   end;
   PSVCParserResult_Instr = ^TSVCParserResult_Instr;
 
@@ -318,6 +320,7 @@ If (fLexer[fTokenIndex].TokenType = lttIdentifier) and IsValidIdentifier(fLexer[
       begin
         // identifier is an instruction
         fParsingData_Instr.Instruction := fLexer[fTokenIndex].Str;
+        fParsingData_Instr.InstructionPos := fLexer[fTokenIndex].Start;
         If fTokenIndex < Pred(fLexer.Count) then
           fParsingStage_Instr := psiIntruction
         else
@@ -605,6 +608,7 @@ var
               SetLength(fParsingResult_Instr.Replacements,Length(fParsingResult_Instr.Replacements) + 1);
               with fParsingResult_Instr.Replacements[High(fParsingResult_Instr.Replacements)] do
                 begin
+                  LinePos := Memory.DisplacePos;
                   Identifier := Memory.DisplaceData;
                   ValType := iatIMM16;
                   IsLabel := False;
@@ -639,6 +643,7 @@ var
               SetLength(fParsingResult_Instr.Replacements,Length(fParsingResult_Instr.Replacements) + 1);
               with fParsingResult_Instr.Replacements[High(fParsingResult_Instr.Replacements)] do
                 begin
+                  LinePos := Memory.ScalePos;
                   Identifier := Memory.ScaleData;
                   ValType := iatIMM8;
                   IsLabel := False;
@@ -729,6 +734,8 @@ If fTokenIndex >= fLexer.Count then
 
         //--- result building --- - - - - - - - - - - - - - - - - - - - - - - -
 
+        fParsingResult_Instr.InstructionPos := fParsingData_Instr.InstructionPos;
+
         // store prefixes if they fit (al least one byte must stay free for an instruction opcode)
         If (Length(fParsingData_Instr.Prefixes) + fParsingResult_Instr.Window.Position) >= Length(fParsingResult_Instr.Window.Data) then
           AddErrorMessage('Prefixes cannot fit into instruction window',0);
@@ -782,8 +789,7 @@ If fTokenIndex >= fLexer.Count then
                       begin
                         // number is set by reference
                         SetLength(fParsingResult_Instr.Replacements,Length(fParsingResult_Instr.Replacements) + 1);
-                        fParsingResult_Instr.Replacements[High(fParsingResult_Instr.Replacements)].Identifier :=
-                          fParsingData_Instr.Arguments[i].Identifier;
+                        fParsingResult_Instr.Replacements[High(fParsingResult_Instr.Replacements)].Identifier := Identifier;
                         with fParsingResult_Instr.Replacements[High(fParsingResult_Instr.Replacements)] do
                           begin
                             LinePos := ValuePos;
@@ -813,8 +819,7 @@ If fTokenIndex >= fLexer.Count then
                       begin
                         // number is set by reference
                         SetLength(fParsingResult_Instr.Replacements,Length(fParsingResult_Instr.Replacements) + 1);
-                        fParsingResult_Instr.Replacements[High(fParsingResult_Instr.Replacements)].Identifier :=
-                          fParsingData_Instr.Arguments[i].Identifier;
+                        fParsingResult_Instr.Replacements[High(fParsingResult_Instr.Replacements)].Identifier := Identifier;
                         with fParsingResult_Instr.Replacements[High(fParsingResult_Instr.Replacements)] do
                           begin
                             LinePos := ValuePos;

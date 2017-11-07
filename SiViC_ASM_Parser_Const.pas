@@ -10,9 +10,10 @@ uses
 
 type
   TSVCParserData_Const = record
-    Identifier: String;
-    Value:      TSVCNumber;
-    Size:       TSVCValueSize;
+    Identifier:     String;
+    IdentifierPos:  Integer;
+    Value:          TSVCNumber;
+    Size:           TSVCValueSize;
   end;
 
   TSVCParserResult_Const = TSVCParserData_Const;
@@ -76,6 +77,7 @@ If (fLexer[fTokenIndex].TokenType = lttIdentifier) and IsValidIdentifier(fLexer[
         If ResolveModifier(fLexer[fTokenIndex].Str) <> pmodNone then
           AddErrorMessage('Identifier expected but modifier %s found',[AnsiLowerCase(fLexer[fTokenIndex].Str)]);
         fParsingData_Const.Identifier := fLexer[fTokenIndex].Str;
+        fParsingData_Const.IdentifierPos := fLexer[fTokenIndex].Start;
         fParsingStage_Const := pscIdentifier;
       end
     else AddErrorMessage('Identifier expected but label "%s" found',[fLexer[fTokenIndex].Str]);
@@ -109,6 +111,8 @@ If (fLexer[fTokenIndex].TokenType = lttIdentifier) and IsValidIdentifier(fLexer[
     case ResolveModifier(fLexer[fTokenIndex].Str) of
       pmodByte: fParsingData_Const.Size := vsByte;
       pmodWord: fParsingData_Const.Size := vsWord;
+      pmodLong,
+      pmodQuad: AddErrorMessage('Invalid size modifier for a constant');
     else
       AddErrorMessage('Size modifier expected but "%s" found',[fLexer[fTokenIndex].Str]);
     end;

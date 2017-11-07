@@ -10,8 +10,9 @@ uses
 
 type
   TSVCParserData_Sys = record
-    Identifier: String;
-    Value:      TSVCNumber;
+    Identifier:     String;
+    IdentifierPos:  Integer;
+    Value:          TSVCNumber;
   end;
 
   TSVCParserResult_Sys = TSVCParserData_Sys;
@@ -71,6 +72,7 @@ If (fLexer[fTokenIndex].TokenType = lttIdentifier) and IsValidIdentifier(fLexer[
         If ResolveModifier(fLexer[fTokenIndex].Str) <> pmodNone then
           AddErrorMessage('Identifier expected but modifier %s found',[AnsiLowerCase(fLexer[fTokenIndex].Str)]);
         fParsingData_Sys.Identifier := fLexer[fTokenIndex].Str;
+        fParsingData_Sys.IdentifierPos := fLexer[fTokenIndex].Start;
         fParsingStage_Sys := pssIdentifier;      
       end
     else AddErrorMessage('Identifier expected but label "%s" found',[fLexer[fTokenIndex].Str]);        

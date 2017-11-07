@@ -17,23 +17,27 @@ const
 
 type
   TSVCParserData_Var = record
-    Identifier:           String;
-    Size:                 TSVCNative;
-    ItemSize:             TSVCValueSize;
-    Data:                 TSVCByteArray;
-    ExplicitSize:         Boolean;
-    Referencing:          Boolean;
-    ReferenceIdentifier:  String;
-    ReferenceOffset:      TSVCNative;
+    Identifier:             String;
+    IdentifierPos:          Integer;
+    Size:                   TSVCNative;
+    ItemSize:               TSVCValueSize;
+    Data:                   TSVCByteArray;
+    ExplicitSize:           Boolean;
+    Referencing:            Boolean;
+    ReferenceIdentifier:    String;
+    ReferenceIdentifierPos: Integer;
+    ReferenceOffset:        TSVCNative;
   end;
 
   TSVCParserResult_Var = record
-    Identifier:           String;
-    Size:                 TSVCNative;
-    Data:                 TSVCByteArray;
-    Referencing:          Boolean;
-    ReferenceIdentifier:  String;
-    ReferenceOffset:      TSVCNative;
+    Identifier:             String;
+    IdentifierPos:          Integer;
+    Size:                   TSVCNative;
+    Data:                   TSVCByteArray;
+    Referencing:            Boolean;
+    ReferenceIdentifier:    String;
+    ReferenceIdentifierPos: Integer;
+    ReferenceOffset:        TSVCNative;
   end;
   PSVCParserResult_Var = ^TSVCParserResult_Var;
 
@@ -81,19 +85,23 @@ procedure TSVCParser_Var.InitializeParsing;
 begin
 inherited;
 fParsingResult_Var.Identifier := '';
+fParsingResult_Var.IdentifierPos := 0;
 fParsingResult_Var.Size := 0;
 SetLength(fParsingResult_Var.Data,0);
 fParsingResult_Var.Referencing := False;
 fParsingResult_Var.ReferenceIdentifier := '';
+fParsingResult_Var.ReferenceIdentifierPos := 0;
 fParsingResult_Var.ReferenceOffset := 0;
 fParsingStage_Var := psvInitial;
 fParsingData_Var.Identifier := '';
+fParsingData_Var.IdentifierPos := 0;
 fParsingData_Var.Size := 0;
 fParsingData_Var.ItemSize := vsByte;
 SetLength(fParsingData_Var.Data,0);
 fParsingData_Var.ExplicitSize := False;
 fParsingData_Var.Referencing := False;
 fParsingData_Var.ReferenceIdentifier := '';
+fParsingData_Var.ReferenceIdentifierPos := 0;
 fParsingData_Var.ReferenceOffset := 0;
 end;
 
@@ -118,6 +126,7 @@ If (fLexer[fTokenIndex].TokenType = lttIdentifier) and IsValidIdentifier(fLexer[
         If ResolveModifier(fLexer[fTokenIndex].Str) <> pmodNone then
           AddErrorMessage('Identifier expected but modifier %s found',[AnsiLowerCase(fLexer[fTokenIndex].Str)]);
         fParsingData_Var.Identifier := fLexer[fTokenIndex].Str;
+        fParsingData_Var.IdentifierPos := fLexer[fTokenIndex].Start;
         If fTokenIndex < Pred(fLexer.Count) then
           fParsingStage_Var := psvIdentifier
         else
@@ -218,6 +227,14 @@ var
   Modifier: TSVCParserModifier;
   TempStr:  UTF8String;
   i:        Integer;
+
+  Function EffectiveSizeCheckAndRaise(Modifier: TSVCComp): Boolean;
+  begin
+    Result := (TSVCComp(fParsingData_Var.Size) * Modifier) <= TSVCComp(High(TSVCNative) + 1);
+    If not Result then
+      AddErrorMessage('Size modifier makes the variable too large to fit into a valid memory space');
+  end;
+
 begin
 // psvEquals -> psvModifier
 // psvEquals -> psvData
@@ -230,19 +247,23 @@ case fLexer[fTokenIndex].TokenType of
       Modifier := ResolveModifier(fLexer[fTokenIndex].Str);
       If Modifier <> pmodNone then
         begin
+          // calculate effective size
           case Modifier of
             pmodByte: fParsingData_Var.ItemSize := vsByte;
             pmodWord: begin
                         fParsingData_Var.ItemSize := vsWord;
-                        fParsingData_Var.Size := TSVCNative(TSVCComp(fParsingData_Var.Size) * SVC_SZ_WORD);
+                        If EffectiveSizeCheckAndRaise(SVC_SZ_WORD) then
+                          fParsingData_Var.Size := TSVCNative(TSVCComp(fParsingData_Var.Size) * SVC_SZ_WORD);
                       end;
             pmodLong: begin
                         fParsingData_Var.ItemSize := vsLong;
-                        fParsingData_Var.Size := TSVCNative(TSVCComp(fParsingData_Var.Size) * SVC_SZ_LONG);
+                        If EffectiveSizeCheckAndRaise(SVC_SZ_LONG) then
+                          fParsingData_Var.Size := TSVCNative(TSVCComp(fParsingData_Var.Size) * SVC_SZ_LONG);
                       end;
             pmodQuad: begin
                         fParsingData_Var.ItemSize := vsQuad;
-                        fParsingData_Var.Size := TSVCNative(TSVCComp(fParsingData_Var.Size) * SVC_SZ_QUAD);
+                        If EffectiveSizeCheckAndRaise(SVC_SZ_QUAD) then
+                          fParsingData_Var.Size := TSVCNative(TSVCComp(fParsingData_Var.Size) * SVC_SZ_QUAD);
                       end;
             pmodPtr:  AddErrorMessage('Size modifier expected but "%s" found',[fLexer[fTokenIndex].Str]);
           else
@@ -386,6 +407,7 @@ If fLexer[fTokenIndex].TokenType = lttIdentifier then
   begin
     fParsingData_Var.Referencing := True;
     fParsingData_Var.ReferenceIdentifier := fLexer[fTokenIndex].Str;
+    fParsingData_Var.ReferenceIdentifierPos := fLexer[fTokenIndex].Start;
     If fTokenIndex < Pred(fLexer.Count) then
       fParsingStage_Var := psvRefIdentifier
     else
@@ -462,6 +484,7 @@ If fTokenIndex >= fLexer.Count then
         else fParsingData_Var.Size := Length(fParsingData_Var.Data);
         // create result from data
         fParsingResult_Var.Identifier := fParsingData_Var.Identifier;
+        fParsingResult_Var.IdentifierPos := fParsingData_Var.IdentifierPos;
         fParsingResult_Var.Size := fParsingData_Var.Size;
         If fParsingData_Var.Size < Length(fParsingData_Var.Data) then
           SetLength(fParsingResult_Var.Data,fParsingData_Var.Size)
@@ -471,6 +494,7 @@ If fTokenIndex >= fLexer.Count then
           fParsingResult_Var.Data[i] := fParsingData_Var.Data[i];
         fParsingResult_Var.Referencing := fParsingData_Var.Referencing;
         fParsingResult_Var.ReferenceIdentifier := fParsingData_Var.ReferenceIdentifier;
+        fParsingResult_Var.ReferenceIdentifierPos := fParsingData_Var.ReferenceIdentifierPos;
         fParsingResult_Var.ReferenceOffset := fParsingData_Var.ReferenceOffset;
         PassResult;
       finally
