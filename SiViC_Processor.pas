@@ -13,7 +13,8 @@ uses
   SiViC_Registers,
   SiViC_Instructions,
   SiViC_Interrupts,
-  SiViC_IO;
+  SiViC_IO,
+  SiViC_Program;
 
 type
   TSVCProcessorState = (psUninitialized,psRunning,psHalted,psReleased,
@@ -107,11 +108,11 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Initialize(MemorySize, NVMemorySize: TMemSize); virtual;
+    procedure Initialize(MemorySize, NVMemorySize: TMemSize); overload; virtual;
+    procedure Initialize(ProgramObject: TSVCProgram); overload; virtual;
     procedure Finalize; virtual;
     procedure Restart; virtual;
     procedure Reset; virtual;
-    // LoadProgram, UnloadProgram, GetCompressedNVMemory, ...
     procedure ExecuteInstruction(InstructionWindow: TSVCInstructionWindow; AffectIP: Boolean = False); virtual;
     Function Run(InstructionCount: Integer = 1): Integer; virtual;
     procedure InterruptRequest(InterruptIndex: TSVCInterruptIndex; Data: TSVCNative = 0); virtual;
@@ -917,10 +918,45 @@ end;
 
 procedure TSVCProcessor.Initialize(MemorySize, NVMemorySize: TMemSize);
 begin
+Finalize;
 fMemory := TSVCMemory.Create(MemorySize);
 fNVMemory := TSVCMemory.Create(NVMemorySize);
 // initialize state
-Restart;
+Reset;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCProcessor.Initialize(ProgramObject: TSVCProgram);
+var
+  i,j:  Integer;
+  Temp: PByte;
+begin
+// initialize memory and state
+Initialize(ProgramObject.MemorySize,ProgramObject.NVMemorySize);
+// initialize stack limit
+fRegisters.GP[REG_SL].Native := TSVCNative(ProgramObject.StackSize);
+// load program
+If ProgramObject.ProgramSize <= ProgramObject.MemorySize then
+  Move(ProgramObject.ProgramData^,fMemory.Memory^,ProgramObject.ProgramSize)
+else
+  raise Exception.Create('TSVCProcessor.Initialize: PRogram cannot fit into memory');
+// load variables
+For i := 0 to Pred(ProgramObject.VariableInitCount) do
+  begin
+    // do checks
+    If TMemSize(ProgramObject[i].Address) >= fMemory.Size then
+      raise Exception.CreateFmt('TSVCProcessor.Initialize: Variable address (0x%.4x) out of bounds.',[ProgramObject[i].Address]);
+    If TMemSize(ProgramObject[i].Address) + TMemSize(Length(ProgramObject[i].Data)) > fMemory.Size then
+      raise Exception.Create('TSVCProcessor.Initialize: Variable cannot fit into available memory.');
+    // store data
+    Temp := PByte(fMemory.AddrPtr(ProgramObject[i].Address));
+    For j := Low(ProgramObject[i].Data) to High(ProgramObject[i].Data) do
+      begin
+        Temp^ := ProgramObject[i].Data[j];
+        Inc(Temp);
+      end
+  end;
 end;
 
 //------------------------------------------------------------------------------
@@ -969,7 +1005,6 @@ end;
 
 procedure TSVCProcessor.Reset;
 begin
-Restart;
 // clear ports events
 FillChar(fPorts,SizeOf(fPorts),0);
 // clear memory (don't touch NVmem)
@@ -977,7 +1012,7 @@ FillChar(fMemory.Memory^,fMemory.Size,0);
 // init interrupt handlers
 FillChar(fInterruptHandlers,SizeOf(fInterruptHandlers),0);
 // init state
-fState := psRunning;
+Restart;
 end;
 
 //------------------------------------------------------------------------------
