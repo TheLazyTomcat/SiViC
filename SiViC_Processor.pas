@@ -116,7 +116,9 @@ type
     procedure ExecuteInstruction(InstructionWindow: TSVCInstructionWindow; AffectIP: Boolean = False); virtual;
     Function Run(InstructionCount: Integer = 1): Integer; virtual;
     procedure InterruptRequest(InterruptIndex: TSVCInterruptIndex; Data: TSVCNative = 0); virtual;
-    procedure SetPortHandlers(PortIndex: TSVCPortIndex; InHandler,OutHandler: TSVCPortEvent); virtual;
+    procedure ConnectDevice(PortIndex: TSVCPortIndex; InHandler,OutHandler: TSVCPortEvent); virtual;
+    Function SaveNVMemory(const FileName: String): Boolean; virtual;
+    Function LoadNVMemory(const FileName: String): Boolean; virtual;
     // for debugging purposes...
     property Memory: TSVCMemory read fMemory;
     property NVMemory: TSVCMemory read fNVMemory;
@@ -1072,10 +1074,34 @@ end;
 
 //------------------------------------------------------------------------------
 
-procedure TSVCProcessor.SetPortHandlers(PortIndex: TSVCPortIndex; InHandler,OutHandler: TSVCPortEvent);
+procedure TSVCProcessor.ConnectDevice(PortIndex: TSVCPortIndex; InHandler,OutHandler: TSVCPortEvent);
 begin
 fPorts[PortIndex].InHandler := InHandler;
 fPorts[PortIndex].OutHandler := OutHandler;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TSVCProcessor.SaveNVMemory(const FileName: String): Boolean;
+begin
+If Assigned(fNVMemory) then
+  begin
+    fNVMemory.SaveToFile(FileName);
+    Result := True;
+  end
+else Result := False;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TSVCProcessor.LoadNVMemory(const FileName: String): Boolean;
+begin
+If Assigned(fNVMemory) then
+  begin
+    fNVMemory.LoadFromFile(FileName);
+    Result := True;
+  end
+else Result := False;
 end;
 
 end.

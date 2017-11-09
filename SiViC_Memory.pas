@@ -5,6 +5,7 @@ unit SiViC_Memory;
 interface
 
 uses
+  Classes,
   AuxTypes,
   SiViC_Common;
 
@@ -21,6 +22,10 @@ type
     Function IsValidArea(Address,Size: TSVCNative): Boolean; virtual;
     procedure CopyMemoryArea(Address,Size: TSVCNative; out Buff); virtual;
     Function FetchMemoryArea(Address,Size: TSVCNative; out Buff): TSVCNative; virtual;
+    procedure SaveToStream(Stream: TStream); virtual;
+    procedure LoadFromStream(Stream: TSTream); virtual;
+    procedure SaveToFile(const FileName: String); virtual;
+    procedure LoadFromFile(const FileName: String); virtual;
     property Memory: Pointer read fMemory;
   published
     property Size: TMemSize read fSize;
@@ -29,7 +34,8 @@ type
 implementation
 
 uses
-  SysUtils;
+  SysUtils,
+  StrRect;
 
 constructor TSVCMemory.Create(Size: TMemSize);
 begin
@@ -104,6 +110,49 @@ else
       end
     else Result := 0;
   end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCMemory.SaveToStream(Stream: TStream);
+begin
+Stream.WriteBuffer(fMemory^,fSize);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCMemory.LoadFromStream(Stream: TSTream);
+begin
+FillChar(fMemory^,fSize,0);
+Stream.Read(fMemory^,fSize);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCMemory.SaveToFile(const FileName: String);
+var
+  FileStream: TFileStream;
+begin
+FileStream := TFileStream.Create(StrToRTL(FileName),fmCreate or fmShareDenyWrite);
+try
+  SaveToStream(FileStream);
+finally
+  FileStream.Free;
+end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCMemory.LoadFromFile(const FileName: String);
+var
+  FileStream: TFileStream;
+begin
+FileStream := TFileStream.Create(StrToRTL(FileName),fmOpenRead or fmShareDenyWrite);
+try
+  LoadFromStream(FileStream);
+finally
+  FileStream.Free;
+end;
 end;
 
 end.
