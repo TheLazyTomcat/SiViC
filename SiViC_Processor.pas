@@ -33,6 +33,10 @@ type
     fFaultMessage:        String;
     fOnBeforeInstruction: TNotifyEvent;
     fOnAfterInstruction:  TNotifyEvent;
+    fOnMemoryRead:        TSVCMemoryAccessEvent;
+    fOnMemoryWrite:       TSVCMemoryAccessEvent;
+    fOnNVMemoryRead:      TSVCMemoryAccessEvent;
+    fOnNVMemoryWrite:     TSVCMemoryAccessEvent;
   protected
     fExecutionCount:      UInt64;
     // internal processor state
@@ -48,6 +52,10 @@ type
     Function GetInfoPage({%H-}Page: TSVCProcessorInfoPage; {%H-}Param: TSVCProcessorInfoData): TSVCProcessorInfoData; virtual;
     // memory access
     Function ResolveMemoryAddress(AddressingMode: TSVCInstructionAddressingMode; out Address: TSVCNative): Boolean; virtual;
+    procedure DoMemoryReadEvent(Address: TSVCNative); virtual;
+    procedure DoMemoryWriteEvent(Address: TSVCNative); virtual;
+    procedure DoNVMemoryReadEvent(Address: TSVCNative); virtual;
+    procedure DoNVMemoryWriteEvent(Address: TSVCNative); virtual;
     // stack access and manipulation
     Function IsValidStackPUSHArea(AreaSize: TSVCNative): TSVCStackError; virtual;
     Function IsValidStackPOPArea(AreaSize: TSVCNative): TSVCStackError; virtual;
@@ -80,6 +88,7 @@ type
     procedure HandleException(E: Exception); virtual;
     procedure DispatchInterrupt(InterruptIndex: TSVCInterruptIndex; Data: TSVCNative = 0); virtual;
     // IO, hardware
+    Function DeviceConnected(PortIndex: TSVCPortIndex): Boolean; virtual;
     procedure PortUpdated(PortIndex: TSVCPortIndex); virtual;
     procedure PortRequested(PortIndex: TSVCPortIndex); virtual;
     // instruction window access
@@ -132,6 +141,10 @@ type
     property FaultMessage: String read fFaultMessage;
     property OnBeforeInstruction: TNotifyEvent read fOnBeforeInstruction write fOnBeforeInstruction;
     property OnAfterInstruction: TNotifyEvent read fOnAfterInstruction write fOnAfterInstruction;
+    property OnMemoryRead: TSVCMemoryAccessEvent read fOnMemoryRead write fOnMemoryRead;
+    property OnMemoryWrite: TSVCMemoryAccessEvent read fOnMemoryWrite write fOnMemoryWrite;
+    property OnNVMemoryRead: TSVCMemoryAccessEvent read fOnNVMemoryRead write fOnNVMemoryRead;
+    property OnNVMemoryWrite: TSVCMemoryAccessEvent read fOnNVMemoryWrite write fOnNVMemoryWrite;
   end;
 
 implementation
@@ -212,6 +225,38 @@ case AddressingMode of
           Result := True;
         end;
 end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCProcessor.DoMemoryReadEvent(Address: TSVCNative);
+begin
+If Assigned(fOnMemoryRead) then
+  fOnMemoryRead(Self,Address);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCProcessor.DoMemoryWriteEvent(Address: TSVCNative);
+begin
+If Assigned(fOnMemoryWrite) then
+  fOnMemoryWrite(Self,Address);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCProcessor.DoNVMemoryReadEvent(Address: TSVCNative);
+begin
+If Assigned(fOnNVMemoryRead) then
+  fOnNVMemoryRead(Self,Address);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCProcessor.DoNVMemoryWriteEvent(Address: TSVCNative);
+begin
+If Assigned(fOnNVMemoryWrite) then
+  fOnNVMemoryWrite(Self,Address);
 end;
 
 //------------------------------------------------------------------------------
@@ -540,6 +585,13 @@ except
       fState := psFailed;
     end;
 end;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TSVCProcessor.DeviceConnected(PortIndex: TSVCPortIndex): Boolean;
+begin
+Result := Assigned(fPorts[PortIndex].OutHandler) and Assigned(fPorts[PortIndex].InHandler);
 end;
 
 //------------------------------------------------------------------------------

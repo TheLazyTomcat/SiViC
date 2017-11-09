@@ -410,6 +410,7 @@ ArgumentsDecode(True,[iatMEM16]);
 RaiseStackError(IsValidStackPUSHArea(SVC_SZ_NATIVE));
 StackPUSH(fRegisters.IP);
 fRegisters.IP := GetArgVal(0);
+DoMemoryReadEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -474,6 +475,7 @@ begin
 ArgumentsDecode(True,[iatMEM8]);
 RaiseStackError(IsValidStackPUSHArea(SVC_SZ_BYTE));
 StackPUSH_B(TSVCByte(GetArgVal(0)));
+DoMemoryReadEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -483,6 +485,7 @@ begin
 ArgumentsDecode(True,[iatMEM16]);
 RaiseStackError(IsValidStackPUSHArea(SVC_SZ_WORD));
 StackPUSH_W(TSVCWord(GetArgVal(0)));
+DoMemoryReadEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -510,6 +513,7 @@ begin
 ArgumentsDecode(True,[iatMEM8]);
 RaiseStackError(IsValidStackPOPArea(SVC_SZ_BYTE));
 TSVCByte(GetArgPtr(0)^) := StackPOP_B;
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -519,6 +523,7 @@ begin
 ArgumentsDecode(True,[iatMEM16]);
 RaiseStackError(IsValidStackPOPArea(SVC_SZ_WORD));
 TSVCWord(GetArgPtr(0)^) := StackPOP_W;
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -676,6 +681,7 @@ procedure TSVCProcessor_Base.Instruction_2B;   // MOV        mem16,  CNTR
 begin
 ArgumentsDecode(True,[iatMEM16,iatCNTR]);
 TSVCNative(GetArgPtr(0)^) := fRegisters.CNTR;
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -700,6 +706,7 @@ procedure TSVCProcessor_Base.Instruction_2E;   // MOV        CNTR,   mem16
 begin
 ArgumentsDecode(True,[iatCNTR,iatMEM16]);
 fRegisters.CNTR := GetArgVal(1);
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -724,6 +731,7 @@ procedure TSVCProcessor_Base.Instruction_31;   // LOAD       reg8,   mem8
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8],True);
 TSVCByte(GetArgPtr(0)^) := TSVCByte(GetArgVal(1));
+DoNVMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -732,6 +740,7 @@ procedure TSVCProcessor_Base.Instruction_32;   // LOAD       reg16,  mem16
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16],True);
 TSVCWord(GetArgPtr(0)^) := TSVCWord(GetArgVal(1));
+DoNVMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -740,6 +749,7 @@ procedure TSVCProcessor_Base.Instruction_33;   // STORE      mem8,   reg8
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8],True);
 TSVCByte(GetArgPtr(0)^) := TSVCByte(GetArgVal(1));
+DoNVMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -748,6 +758,7 @@ procedure TSVCProcessor_Base.Instruction_34;   // STORE      mem16,  reg16
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16],True);
 TSVCWord(GetArgPtr(0)^) := TSVCWord(GetArgVal(1));
+DoNVMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -755,8 +766,12 @@ end;
 procedure TSVCProcessor_Base.Instruction_35;   // IN         reg8,   imm8
 begin
 ArgumentsDecode(False,[iatREG8,iatIMM8]);
-PortRequested(TSVCPortIndex(GetArgVal(1)));
-TSVCByte(GetArgPtr(0)^) := TSVCByte(fPorts[TSVCPortIndex(GetArgVal(1))].Data);
+If DeviceConnected(GetArgVal(1)) then
+  begin
+    PortRequested(TSVCPortIndex(GetArgVal(1)));
+    TSVCByte(GetArgPtr(0)^) := TSVCByte(fPorts[TSVCPortIndex(GetArgVal(1))].Data);
+  end
+else raise ESVCInterruptException.Create(SVC_EXCEPTION_DEVICENOTAVAILABLE,GetArgVal(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -764,8 +779,12 @@ end;
 procedure TSVCProcessor_Base.Instruction_36;   // IN         reg16,  imm8
 begin
 ArgumentsDecode(False,[iatREG16,iatIMM8]);
-PortRequested(TSVCPortIndex(GetArgVal(1)));
-TSVCWord(GetArgPtr(0)^) := TSVCWord(fPorts[TSVCPortIndex(GetArgVal(1))].Data);
+If DeviceConnected(GetArgVal(1)) then
+  begin
+    PortRequested(TSVCPortIndex(GetArgVal(1)));
+    TSVCWord(GetArgPtr(0)^) := TSVCWord(fPorts[TSVCPortIndex(GetArgVal(1))].Data);
+  end
+else raise ESVCInterruptException.Create(SVC_EXCEPTION_DEVICENOTAVAILABLE,GetArgVal(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -773,8 +792,12 @@ end;
 procedure TSVCProcessor_Base.Instruction_37;   // IN         reg8,   reg8
 begin
 ArgumentsDecode(False,[iatREG8,iatREG8]);
-PortRequested(TSVCPortIndex(GetArgVal(1)));
-TSVCByte(GetArgPtr(0)^) := TSVCByte(fPorts[TSVCPortIndex(GetArgVal(1))].Data);
+If DeviceConnected(GetArgVal(1)) then
+  begin
+    PortRequested(TSVCPortIndex(GetArgVal(1)));
+    TSVCByte(GetArgPtr(0)^) := TSVCByte(fPorts[TSVCPortIndex(GetArgVal(1))].Data);
+  end
+else raise ESVCInterruptException.Create(SVC_EXCEPTION_DEVICENOTAVAILABLE,GetArgVal(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -782,8 +805,12 @@ end;
 procedure TSVCProcessor_Base.Instruction_38;   // IN         reg16,  reg8
 begin
 ArgumentsDecode(False,[iatREG16,iatREG8]);
-PortRequested(TSVCPortIndex(GetArgVal(1)));
-TSVCWord(GetArgPtr(0)^) := TSVCWord(fPorts[TSVCPortIndex(GetArgVal(1))].Data);
+If DeviceConnected(GetArgVal(1)) then
+  begin
+    PortRequested(TSVCPortIndex(GetArgVal(1)));
+    TSVCWord(GetArgPtr(0)^) := TSVCWord(fPorts[TSVCPortIndex(GetArgVal(1))].Data);
+  end
+else raise ESVCInterruptException.Create(SVC_EXCEPTION_DEVICENOTAVAILABLE,GetArgVal(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -791,8 +818,12 @@ end;
 procedure TSVCProcessor_Base.Instruction_39;   // OUT        imm8,   reg8
 begin
 ArgumentsDecode(False,[iatIMM8,iatREG8]);
-fPorts[TSVCPortIndex(GetArgVal(0))].Data := TSVCByte(GetArgVal(1));
-PortUpdated(TSVCPortIndex(GetArgVal(0)));
+If DeviceConnected(GetArgVal(0)) then
+  begin
+    fPorts[TSVCPortIndex(GetArgVal(0))].Data := TSVCByte(GetArgVal(1));
+    PortUpdated(TSVCPortIndex(GetArgVal(0)));
+  end
+else raise ESVCInterruptException.Create(SVC_EXCEPTION_DEVICENOTAVAILABLE,GetArgVal(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -800,8 +831,12 @@ end;
 procedure TSVCProcessor_Base.Instruction_3A;   // OUT        imm8,   reg16
 begin
 ArgumentsDecode(False,[iatIMM8,iatREG16]);
-fPorts[TSVCPortIndex(GetArgVal(0))].Data := TSVCWord(GetArgVal(1));
-PortUpdated(TSVCPortIndex(GetArgVal(0)));
+If DeviceConnected(GetArgVal(0)) then
+  begin
+    fPorts[TSVCPortIndex(GetArgVal(0))].Data := TSVCWord(GetArgVal(1));
+    PortUpdated(TSVCPortIndex(GetArgVal(0)));
+  end
+else raise ESVCInterruptException.Create(SVC_EXCEPTION_DEVICENOTAVAILABLE,GetArgVal(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -809,8 +844,12 @@ end;
 procedure TSVCProcessor_Base.Instruction_3B;   // OUT        reg8,   reg8
 begin
 ArgumentsDecode(False,[iatREG8,iatREG8]);
-fPorts[TSVCPortIndex(GetArgVal(0))].Data := TSVCByte(GetArgVal(1));
-PortUpdated(TSVCPortIndex(GetArgVal(0)));
+If DeviceConnected(GetArgVal(0)) then
+  begin
+    fPorts[TSVCPortIndex(GetArgVal(0))].Data := TSVCByte(GetArgVal(1));
+    PortUpdated(TSVCPortIndex(GetArgVal(0)));
+  end
+else raise ESVCInterruptException.Create(SVC_EXCEPTION_DEVICENOTAVAILABLE,GetArgVal(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -818,8 +857,12 @@ end;
 procedure TSVCProcessor_Base.Instruction_3C;   // OUT        reg8,   reg16
 begin
 ArgumentsDecode(False,[iatREG8,iatREG16]);
-fPorts[TSVCPortIndex(GetArgVal(0))].Data := TSVCWord(GetArgVal(1));
-PortUpdated(TSVCPortIndex(GetArgVal(0)));
+If DeviceConnected(GetArgVal(0)) then
+  begin
+    fPorts[TSVCPortIndex(GetArgVal(0))].Data := TSVCWord(GetArgVal(1));
+    PortUpdated(TSVCPortIndex(GetArgVal(0)));
+  end
+else raise ESVCInterruptException.Create(SVC_EXCEPTION_DEVICENOTAVAILABLE,GetArgVal(0));
 end;
 
 end.

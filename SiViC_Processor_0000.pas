@@ -1845,6 +1845,7 @@ procedure TSVCProcessor_0000.Instruction_57;   // CMP        reg8,   mem8
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8]);
 FlaggedSUB_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -1853,6 +1854,7 @@ procedure TSVCProcessor_0000.Instruction_58;   // CMP        reg16,  mem16
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16]);
 FlaggedSUB_W(TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -1861,6 +1863,7 @@ procedure TSVCProcessor_0000.Instruction_59;   // CMP        mem8,   reg8
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 FlaggedSUB_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -1869,6 +1872,7 @@ procedure TSVCProcessor_0000.Instruction_5A;   // CMP        mem16,  reg16
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16]);
 FlaggedSUB_W(TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -1909,6 +1913,7 @@ procedure TSVCProcessor_0000.Instruction_5F;   // TEST       reg8,   mem8
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8]);
 FlaggedAND_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -1917,6 +1922,7 @@ procedure TSVCProcessor_0000.Instruction_60;   // TEST       reg16,  mem16
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16]);
 FlaggedAND_W(TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -1925,6 +1931,7 @@ procedure TSVCProcessor_0000.Instruction_61;   // TEST       mem8,   reg8
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 FlaggedAND_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -1933,6 +1940,7 @@ procedure TSVCProcessor_0000.Instruction_62;   // TEST       mem16,  reg16
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16]);
 FlaggedAND_W(TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -1965,6 +1973,7 @@ procedure TSVCProcessor_0000.Instruction_66;   // JMP        mem16
 begin
 ArgumentsDecode(True,[iatMEM16]);
 fRegisters.IP := GetArgVal(0);
+DoMemoryReadEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -2000,7 +2009,10 @@ procedure TSVCProcessor_0000.Instruction_6A;   // Jcc        mem16
 begin
 ArgumentsDecode(True,[iatMEM16]);
 If EvaluateCondition(ExtractConditionCode(fCurrentInstruction.Suffix)) then
-  fRegisters.IP := GetArgVal(0);
+  begin
+    fRegisters.IP := GetArgVal(0);
+    DoMemoryReadEvent(GetArgAddr(0));
+  end;
 end;
 
 //------------------------------------------------------------------------------
@@ -2028,6 +2040,7 @@ begin
 ArgumentsDecode(True,[iatMEM8]);
 TSVCByte(GetArgPtr(0)^) :=
   BoolToByte(EvaluateCondition(ExtractConditionCode(fCurrentInstruction.Suffix)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -2037,6 +2050,7 @@ begin
 ArgumentsDecode(True,[iatMEM16]);
 TSVCWord(GetArgPtr(0)^) :=
   BoolToByte(EvaluateCondition(ExtractConditionCode(fCurrentInstruction.Suffix)));
+DoMemoryWriteEvent(GetArgAddr(0))
 end;
 
 //------------------------------------------------------------------------------
@@ -2081,7 +2095,10 @@ procedure TSVCProcessor_0000.Instruction_73;   // CMOVcc     reg8,   mem8
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8]);
 If EvaluateCondition(ExtractConditionCode(fCurrentInstruction.Suffix)) then
-  TSVCByte(GetArgPtr(0)^) := TSVCByte(GetArgVal(1));
+  begin
+    TSVCByte(GetArgPtr(0)^) := TSVCByte(GetArgVal(1));
+    DoMemoryReadEvent(GetArgAddr(1));
+  end;
 end;
 
 //------------------------------------------------------------------------------
@@ -2090,7 +2107,10 @@ procedure TSVCProcessor_0000.Instruction_74;   // CMOVcc     reg16,  mem16
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16]);
 If EvaluateCondition(ExtractConditionCode(fCurrentInstruction.Suffix)) then
-  TSVCWord(GetArgPtr(0)^) := TSVCWord(GetArgVal(1));
+  begin
+    TSVCWord(GetArgPtr(0)^) := TSVCWord(GetArgVal(1));
+    DoMemoryReadEvent(GetArgAddr(1));
+  end;
 end;
 
 //------------------------------------------------------------------------------
@@ -2099,7 +2119,10 @@ procedure TSVCProcessor_0000.Instruction_75;   // CMOVcc     mem8,   reg8
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 If EvaluateCondition(ExtractConditionCode(fCurrentInstruction.Suffix)) then
-  TSVCByte(GetArgPtr(0)^) := TSVCByte(GetArgVal(1));
+  begin
+    TSVCByte(GetArgPtr(0)^) := TSVCByte(GetArgVal(1));
+    DoMemoryWriteEvent(GetArgAddr(0));
+  end;
 end;
 
 //------------------------------------------------------------------------------
@@ -2108,7 +2131,10 @@ procedure TSVCProcessor_0000.Instruction_76;   // CMOVcc     mem16,  reg16
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16]);
 If EvaluateCondition(ExtractConditionCode(fCurrentInstruction.Suffix)) then
-  TSVCWord(GetArgPtr(0)^) := TSVCWord(GetArgVal(1));
+  begin
+    TSVCWord(GetArgPtr(0)^) := TSVCWord(GetArgVal(1));
+    DoMemoryWriteEvent(GetArgAddr(0));
+  end;
 end;
 
 //------------------------------------------------------------------------------
@@ -2197,6 +2223,7 @@ procedure TSVCProcessor_0000.Instruction_7F;   // MOV        reg8,   mem8
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8]);
 TSVCByte(GetArgPtr(0)^) := TSVCByte(GetArgVal(1));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -2205,6 +2232,7 @@ procedure TSVCProcessor_0000.Instruction_80;   // MOV        reg16,  mem16
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16]);
 TSVCWord(GetArgPtr(0)^) := TSVCWord(GetArgVal(1));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -2213,6 +2241,7 @@ procedure TSVCProcessor_0000.Instruction_81;   // MOV        mem8,   reg8
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 TSVCByte(GetArgPtr(0)^) := TSVCByte(GetArgVal(1));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -2221,6 +2250,7 @@ procedure TSVCProcessor_0000.Instruction_82;   // MOV        mem16,  reg16
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16]);
 TSVCWord(GetArgPtr(0)^) := TSVCWord(GetArgVal(1));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -2237,6 +2267,7 @@ procedure TSVCProcessor_0000.Instruction_84;   // MOVZX      reg16,  mem8
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM8]);
 TSVCWord(GetArgPtr(0)^) := TSVCWord(TSVCByte(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -2253,6 +2284,7 @@ procedure TSVCProcessor_0000.Instruction_86;   // MOVSX      reg16,  mem8
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM8]);
 TSVCWord(GetArgPtr(0)^) := TSVCWord(TSVCSWord(TSVCSByte(GetArgVal(1))));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -2277,6 +2309,7 @@ procedure TSVCProcessor_0000.Instruction_89;   // XCHG       reg8,   mem8
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8]);
 ImplementationXCHG_B;
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -2285,6 +2318,7 @@ procedure TSVCProcessor_0000.Instruction_8A;   // XCHG       reg16,  mem16
 begin
 ArgumentsDecode(False,[iatREG16,iatMEM16]);
 ImplementationXCHG_W;
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -2293,6 +2327,7 @@ procedure TSVCProcessor_0000.Instruction_8B;   // XCHG       mem8,   reg8
 begin
 ArgumentsDecode(False,[iatMEM8,iatREG8]);
 ImplementationXCHG_B;
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -2301,6 +2336,7 @@ procedure TSVCProcessor_0000.Instruction_8C;   // XCHG       mem16,  reg16
 begin
 ArgumentsDecode(False,[iatMEM16,iatREG16]);
 ImplementationXCHG_W;
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -2317,6 +2353,7 @@ procedure TSVCProcessor_0000.Instruction_8E;   // CVTSX      reg16,  mem8
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM8]);
 TSVCSWord(GetArgPtr(0)^) := TSVCSWord(TSVCSByte(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -2325,6 +2362,7 @@ procedure TSVCProcessor_0000.Instruction_8F;   // CVTSX      mem16,  reg8
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG8]);
 TSVCSWord(GetArgPtr(0)^) := TSVCSWord(TSVCSByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //==============================================================================
@@ -2349,6 +2387,7 @@ procedure TSVCProcessor_0000.Instruction_D0_03;   // INC        mem8
 begin
 ArgumentsDecode(True,[iatMEM8]);
 ImplementationINC_B;
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -2357,6 +2396,7 @@ procedure TSVCProcessor_0000.Instruction_D0_04;   // INC        mem16
 begin
 ArgumentsDecode(True,[iatMEM16]);
 ImplementationINC_W;
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -2381,6 +2421,7 @@ procedure TSVCProcessor_0000.Instruction_D0_07;   // DEC        mem8
 begin
 ArgumentsDecode(True,[iatMEM8]);
 ImplementationDEC_B;
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -2389,6 +2430,7 @@ procedure TSVCProcessor_0000.Instruction_D0_08;   // DEC        mem16
 begin
 ArgumentsDecode(True,[iatMEM16]);
 ImplementationDEC_W;
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
  
 //------------------------------------------------------------------------------
@@ -2413,6 +2455,7 @@ procedure TSVCProcessor_0000.Instruction_D0_0B;   // NEG        mem8
 begin
 ArgumentsDecode(True,[iatMEM8]);
 TSVCByte(GetArgPtr(0)^) := -TSVCSByte(GetArgVal(0));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -2421,6 +2464,7 @@ procedure TSVCProcessor_0000.Instruction_D0_0C;   // NEG        mem16
 begin
 ArgumentsDecode(True,[iatMEM16]);
 TSVCSWord(GetArgPtr(0)^) := -TSVCSWord(GetArgVal(0));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -2461,6 +2505,7 @@ procedure TSVCProcessor_0000.Instruction_D0_11;   // ADD        reg8,   mem8
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedADD_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -2469,6 +2514,7 @@ procedure TSVCProcessor_0000.Instruction_D0_12;   // ADD        reg16,  mem16
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedADD_W(TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -2477,6 +2523,7 @@ procedure TSVCProcessor_0000.Instruction_D0_13;   // ADD        mem8,   reg8
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedADD_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -2485,6 +2532,7 @@ procedure TSVCProcessor_0000.Instruction_D0_14;   // ADD        mem16,  reg16
 begin
 ArgumentsDecode(True,[iatREG16,iatREG16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedADD_W(TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -2525,6 +2573,7 @@ procedure TSVCProcessor_0000.Instruction_D0_19;   // SUB        reg8,   mem8
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedSUB_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -2533,6 +2582,7 @@ procedure TSVCProcessor_0000.Instruction_D0_1A;   // SUB        reg16,  mem16
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedSUB_W(TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -2541,6 +2591,7 @@ procedure TSVCProcessor_0000.Instruction_D0_1B;   // SUB        mem8,   reg8
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedSUB_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -2549,6 +2600,7 @@ procedure TSVCProcessor_0000.Instruction_D0_1C;   // SUB        mem16,  reg16
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedSUB_W(TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -2589,6 +2641,7 @@ procedure TSVCProcessor_0000.Instruction_D0_21;   // ADC        reg8,   mem8
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedADC_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
  
 //------------------------------------------------------------------------------
@@ -2597,6 +2650,7 @@ procedure TSVCProcessor_0000.Instruction_D0_22;   // ADC        reg16,  mem16
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedADC_W(TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -2605,6 +2659,7 @@ procedure TSVCProcessor_0000.Instruction_D0_23;   // ADC        mem8,   reg8
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedADC_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
  
 //------------------------------------------------------------------------------
@@ -2613,6 +2668,7 @@ procedure TSVCProcessor_0000.Instruction_D0_24;   // ADC        mem16,  reg16
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedADC_W(TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -2653,6 +2709,7 @@ procedure TSVCProcessor_0000.Instruction_D0_29;   // SBB        reg8,   mem8
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedSBB_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
   
 //------------------------------------------------------------------------------
@@ -2661,6 +2718,7 @@ procedure TSVCProcessor_0000.Instruction_D0_2A;   // SBB        reg16,  mem16
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedSBB_W(TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
    
 //------------------------------------------------------------------------------
@@ -2669,6 +2727,7 @@ procedure TSVCProcessor_0000.Instruction_D0_2B;   // SBB        mem8,   reg8
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedSBB_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
  
 //------------------------------------------------------------------------------
@@ -2677,6 +2736,7 @@ procedure TSVCProcessor_0000.Instruction_D0_2C;   // SBB        mem16,  reg16
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedSBB_W(TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -2727,6 +2787,7 @@ var
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedMUL_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)),Temp);
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -2737,6 +2798,7 @@ var
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedMUL_W(TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(1)),Temp);
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -2747,6 +2809,7 @@ var
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedMUL_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)),Temp);
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -2757,6 +2820,7 @@ var
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedMUL_W(TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(1)),Temp);
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -2781,6 +2845,7 @@ procedure TSVCProcessor_0000.Instruction_D0_37;   // MUL        mem8,   reg8,   
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8,iatIMM8]);
 TSVCByte(GetArgPtr(1)^) := FlaggedMUL_B(TSVCByte(GetArgVal(1)),TSVCByte(GetArgVal(2)),TSVCByte(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -2789,6 +2854,7 @@ procedure TSVCProcessor_0000.Instruction_D0_38;   // MUL        mem16,  reg16,  
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16,iatIMM16]);
 TSVCWord(GetArgPtr(1)^) := FlaggedMUL_W(TSVCWord(GetArgVal(1)),TSVCWord(GetArgVal(2)),TSVCWord(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
  
 //------------------------------------------------------------------------------
@@ -2797,6 +2863,7 @@ procedure TSVCProcessor_0000.Instruction_D0_39;   // MUL        reg8,   mem8,   
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8,iatIMM8]);
 TSVCByte(GetArgPtr(1)^) := FlaggedMUL_B(TSVCByte(GetArgVal(1)),TSVCByte(GetArgVal(2)),TSVCByte(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(1));
 end;
  
 //------------------------------------------------------------------------------
@@ -2805,6 +2872,7 @@ procedure TSVCProcessor_0000.Instruction_D0_3A;   // MUL        reg16,  mem16,  
 begin
 ArgumentsDecode(True,[iatREG16,iatREG16,iatIMM16]);
 TSVCWord(GetArgPtr(1)^) := FlaggedMUL_W(TSVCWord(GetArgVal(1)),TSVCWord(GetArgVal(2)),TSVCWord(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -2829,6 +2897,7 @@ procedure TSVCProcessor_0000.Instruction_D0_3D;   // MUL        reg8,   reg8,   
 begin
 ArgumentsDecode(True,[iatREG8,iatREG8,iatMEM8]);
 TSVCByte(GetArgPtr(1)^) := FlaggedMUL_B(TSVCByte(GetArgVal(1)),TSVCByte(GetArgVal(2)),TSVCByte(GetArgPtr(0)^));
+DoMemoryReadEvent(GetArgAddr(2));
 end;
 
 //------------------------------------------------------------------------------
@@ -2837,6 +2906,7 @@ procedure TSVCProcessor_0000.Instruction_D0_3E;   // MUL        reg16,  reg16,  
 begin
 ArgumentsDecode(True,[iatREG16,iatREG16,iatMEM16]);
 TSVCWord(GetArgPtr(1)^) := FlaggedMUL_W(TSVCWord(GetArgVal(1)),TSVCWord(GetArgVal(2)),TSVCWord(GetArgPtr(0)^));
+DoMemoryReadEvent(GetArgAddr(2));
 end;
   
 //------------------------------------------------------------------------------
@@ -2845,6 +2915,7 @@ procedure TSVCProcessor_0000.Instruction_D0_3F;   // MUL        reg8,   mem8,   
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8,iatREG8]);
 TSVCByte(GetArgPtr(1)^) := FlaggedMUL_B(TSVCByte(GetArgVal(1)),TSVCByte(GetArgVal(2)),TSVCByte(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(1));
 end;
   
 //------------------------------------------------------------------------------
@@ -2853,6 +2924,7 @@ procedure TSVCProcessor_0000.Instruction_D0_40;   // MUL        reg16,  mem16,  
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16,iatREG16]);
 TSVCWord(GetArgPtr(1)^) := FlaggedMUL_W(TSVCWord(GetArgVal(1)),TSVCWord(GetArgVal(2)),TSVCWord(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(1));
 end;
  
 //------------------------------------------------------------------------------
@@ -2861,6 +2933,7 @@ procedure TSVCProcessor_0000.Instruction_D0_41;   // MUL        mem8,   reg8,   
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8,iatREG8]);
 TSVCByte(GetArgPtr(1)^) := FlaggedMUL_B(TSVCByte(GetArgVal(1)),TSVCByte(GetArgVal(2)),TSVCByte(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
  
 //------------------------------------------------------------------------------
@@ -2869,6 +2942,7 @@ procedure TSVCProcessor_0000.Instruction_D0_42;   // MUL        mem16,  reg16,  
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16,iatREG16]);
 TSVCWord(GetArgPtr(1)^) := FlaggedMUL_W(TSVCWord(GetArgVal(1)),TSVCWord(GetArgVal(2)),TSVCWord(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
  
 //------------------------------------------------------------------------------
@@ -2919,6 +2993,7 @@ var
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8]);
 TSVCSByte(GetArgPtr(0)^) := FlaggedIMUL_B(TSVCSByte(GetArgVal(0)),TSVCSByte(GetArgVal(1)),Temp);
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -2929,6 +3004,7 @@ var
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16]);
 TSVCSWord(GetArgPtr(0)^) := FlaggedIMUL_W(TSVCSWord(GetArgVal(0)),TSVCSWord(GetArgVal(1)),Temp);
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -2939,6 +3015,7 @@ var
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 TSVCSByte(GetArgPtr(0)^) := FlaggedIMUL_B(TSVCSByte(GetArgVal(0)),TSVCSByte(GetArgVal(1)),Temp);
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -2949,6 +3026,7 @@ var
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16]);
 TSVCSWord(GetArgPtr(0)^) := FlaggedIMUL_W(TSVCSWord(GetArgVal(0)),TSVCSWord(GetArgVal(1)),Temp);
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -2973,6 +3051,7 @@ procedure TSVCProcessor_0000.Instruction_D0_4D;   // IMUL       mem8,   reg8,   
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8,iatIMM8]);
 TSVCSByte(GetArgPtr(1)^) := FlaggedIMUL_B(TSVCSByte(GetArgVal(1)),TSVCSByte(GetArgVal(2)),TSVCSByte(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -2981,6 +3060,7 @@ procedure TSVCProcessor_0000.Instruction_D0_4E;   // IMUL       mem16,  reg16,  
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16,iatIMM16]);
 TSVCSWord(GetArgPtr(1)^) := FlaggedIMUL_W(TSVCSWord(GetArgVal(1)),TSVCSWord(GetArgVal(2)),TSVCSWord(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
  
 //------------------------------------------------------------------------------
@@ -2989,6 +3069,7 @@ procedure TSVCProcessor_0000.Instruction_D0_4F;   // IMUL       reg8,   mem8,   
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8,iatIMM8]);
 TSVCSByte(GetArgPtr(1)^) := FlaggedIMUL_B(TSVCSByte(GetArgVal(1)),TSVCSByte(GetArgVal(2)),TSVCSByte(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(1));
 end;
  
 //------------------------------------------------------------------------------
@@ -2997,6 +3078,7 @@ procedure TSVCProcessor_0000.Instruction_D0_50;   // IMUL       reg16,  mem16,  
 begin
 ArgumentsDecode(True,[iatREG16,iatREG16,iatIMM16]);
 TSVCSWord(GetArgPtr(1)^) := FlaggedIMUL_W(TSVCSWord(GetArgVal(1)),TSVCSWord(GetArgVal(2)),TSVCSWord(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(1));
 end;
   
 //------------------------------------------------------------------------------
@@ -3021,6 +3103,7 @@ procedure TSVCProcessor_0000.Instruction_D0_53;   // IMUL       reg8,   reg8,   
 begin
 ArgumentsDecode(True,[iatREG8,iatREG8,iatMEM8]);
 TSVCSByte(GetArgPtr(1)^) := FlaggedIMUL_B(TSVCSByte(GetArgVal(1)),TSVCSByte(GetArgVal(2)),TSVCSByte(GetArgPtr(0)^));
+DoMemoryReadEvent(GetArgAddr(2));
 end;
 
 //------------------------------------------------------------------------------
@@ -3029,6 +3112,7 @@ procedure TSVCProcessor_0000.Instruction_D0_54;   // IMUL       reg16,  reg16,  
 begin
 ArgumentsDecode(True,[iatREG16,iatREG16,iatMEM16]);
 TSVCSWord(GetArgPtr(1)^) := FlaggedIMUL_W(TSVCSWord(GetArgVal(1)),TSVCSWord(GetArgVal(2)),TSVCSWord(GetArgPtr(0)^));
+DoMemoryReadEvent(GetArgAddr(2));
 end;
   
 //------------------------------------------------------------------------------
@@ -3037,6 +3121,7 @@ procedure TSVCProcessor_0000.Instruction_D0_55;   // IMUL       reg8,   mem8,   
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8,iatREG8]);
 TSVCSByte(GetArgPtr(1)^) := FlaggedIMUL_B(TSVCSByte(GetArgVal(1)),TSVCSByte(GetArgVal(2)),TSVCSByte(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(1));
 end;
   
 //------------------------------------------------------------------------------
@@ -3045,6 +3130,7 @@ procedure TSVCProcessor_0000.Instruction_D0_56;   // IMUL       reg16,  mem16,  
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16,iatREG16]);
 TSVCSWord(GetArgPtr(1)^) := FlaggedIMUL_W(TSVCSWord(GetArgVal(1)),TSVCSWord(GetArgVal(2)),TSVCSWord(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(1));
 end;
  
 //------------------------------------------------------------------------------
@@ -3053,6 +3139,7 @@ procedure TSVCProcessor_0000.Instruction_D0_57;   // IMUL       mem8,   reg8,   
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8,iatREG8]);
 TSVCSByte(GetArgPtr(1)^) := FlaggedIMUL_B(TSVCSByte(GetArgVal(1)),TSVCSByte(GetArgVal(2)),TSVCSByte(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
  
 //------------------------------------------------------------------------------
@@ -3061,6 +3148,7 @@ procedure TSVCProcessor_0000.Instruction_D0_58;   // IMUL       mem16,  reg16,  
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16,iatREG16]);
 TSVCSWord(GetArgPtr(1)^) := FlaggedIMUL_W(TSVCSWord(GetArgVal(1)),TSVCSWord(GetArgVal(2)),TSVCSWord(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -3111,6 +3199,7 @@ var
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedDIV_B(TSVCByte(GetArgVal(0)),0,TSVCByte(GetArgVal(1)),Temp);
+DoMemoryReadEvent(GetArgAddr(1));
 end;
  
 //------------------------------------------------------------------------------
@@ -3121,6 +3210,7 @@ var
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedDIV_W(TSVCWord(GetArgVal(0)),0,TSVCWord(GetArgVal(1)),Temp);
+DoMemoryReadEvent(GetArgAddr(1));
 end;
  
 //------------------------------------------------------------------------------
@@ -3131,6 +3221,7 @@ var
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedDIV_B(TSVCByte(GetArgVal(0)),0,TSVCByte(GetArgVal(1)),Temp);
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
  
 //------------------------------------------------------------------------------
@@ -3141,6 +3232,7 @@ var
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedDIV_W(TSVCWord(GetArgVal(0)),0,TSVCWord(GetArgVal(1)),Temp);
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -3165,6 +3257,7 @@ procedure TSVCProcessor_0000.Instruction_D0_63;   // DIV        mem8,   reg8,   
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8,iatIMM8]);
 TSVCByte(GetArgPtr(1)^) := FlaggedDIV_B(TSVCByte(GetArgVal(1)),TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(2)),TSVCByte(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(0));
 end; 
 
 //------------------------------------------------------------------------------
@@ -3173,6 +3266,7 @@ procedure TSVCProcessor_0000.Instruction_D0_64;   // DIV        mem16,  reg16,  
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16,iatIMM16]);
 TSVCWord(GetArgPtr(1)^) := FlaggedDIV_W(TSVCWord(GetArgVal(1)),TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(2)),TSVCWord(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(0));
 end; 
 
 //------------------------------------------------------------------------------
@@ -3181,6 +3275,7 @@ procedure TSVCProcessor_0000.Instruction_D0_65;   // DIV        reg8,   mem8,   
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8,iatIMM8]);
 TSVCByte(GetArgPtr(1)^) := FlaggedDIV_B(TSVCByte(GetArgVal(1)),TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(2)),TSVCByte(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(1));
 end; 
 
 //------------------------------------------------------------------------------
@@ -3189,6 +3284,7 @@ procedure TSVCProcessor_0000.Instruction_D0_66;   // DIV        reg16,  mem16,  
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16,iatIMM16]);
 TSVCWord(GetArgPtr(1)^) := FlaggedDIV_W(TSVCWord(GetArgVal(1)),TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(2)),TSVCWord(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(1));
 end; 
 
 //------------------------------------------------------------------------------
@@ -3213,6 +3309,7 @@ procedure TSVCProcessor_0000.Instruction_D0_69;   // DIV        reg8,   reg8,   
 begin
 ArgumentsDecode(True,[iatREG8,iatREG8,iatMEM8]);
 TSVCByte(GetArgPtr(1)^) := FlaggedDIV_B(TSVCByte(GetArgVal(1)),TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(2)),TSVCByte(GetArgPtr(0)^));
+DoMemoryReadEvent(GetArgAddr(2));
 end; 
 
 //------------------------------------------------------------------------------
@@ -3221,6 +3318,7 @@ procedure TSVCProcessor_0000.Instruction_D0_6A;   // DIV        reg16,  reg16,  
 begin
 ArgumentsDecode(True,[iatREG16,iatREG16,iatMEM16]);
 TSVCWord(GetArgPtr(1)^) := FlaggedDIV_W(TSVCWord(GetArgVal(1)),TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(2)),TSVCWord(GetArgPtr(0)^));
+DoMemoryReadEvent(GetArgAddr(2));
 end;
 
 //------------------------------------------------------------------------------
@@ -3229,6 +3327,7 @@ procedure TSVCProcessor_0000.Instruction_D0_6B;   // DIV        reg8,   mem8,   
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8,iatREG8]);
 TSVCByte(GetArgPtr(1)^) := FlaggedDIV_B(TSVCByte(GetArgVal(1)),TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(2)),TSVCByte(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -3237,6 +3336,7 @@ procedure TSVCProcessor_0000.Instruction_D0_6C;   // DIV        reg16,  mem16,  
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16,iatREG16]);
 TSVCWord(GetArgPtr(1)^) := FlaggedDIV_W(TSVCWord(GetArgVal(1)),TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(2)),TSVCWord(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -3245,6 +3345,7 @@ procedure TSVCProcessor_0000.Instruction_D0_6D;   // DIV        mem8,   reg8,   
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8,iatREG8]);
 TSVCByte(GetArgPtr(1)^) := FlaggedDIV_B(TSVCByte(GetArgVal(1)),TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(2)),TSVCByte(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(0));
 end; 
 
 //------------------------------------------------------------------------------
@@ -3253,6 +3354,7 @@ procedure TSVCProcessor_0000.Instruction_D0_6E;   // DIV        mem16,  reg16,  
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16,iatREG16]);
 TSVCWord(GetArgPtr(1)^) := FlaggedDIV_W(TSVCWord(GetArgVal(1)),TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(2)),TSVCWord(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -3303,6 +3405,7 @@ var
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8]);
 TSVCSByte(GetArgPtr(0)^) := FlaggedIDIV_B(TSVCSByte(GetArgVal(0)),0,TSVCSByte(GetArgVal(1)),Temp);
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -3313,6 +3416,7 @@ var
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16]);
 TSVCSWord(GetArgPtr(0)^) := FlaggedIDIV_W(TSVCSWord(GetArgVal(0)),0,TSVCSWord(GetArgVal(1)),Temp);
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -3323,6 +3427,7 @@ var
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 TSVCSByte(GetArgPtr(0)^) := FlaggedIDIV_B(TSVCSByte(GetArgVal(0)),0,TSVCSByte(GetArgVal(1)),Temp);
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -3333,6 +3438,7 @@ var
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16]);
 TSVCSWord(GetArgPtr(0)^) := FlaggedIDIV_W(TSVCSWord(GetArgVal(0)),0,TSVCSWord(GetArgVal(1)),Temp);
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -3357,6 +3463,7 @@ procedure TSVCProcessor_0000.Instruction_D0_79;   // IDIV       mem8,   reg8,   
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8,iatIMM8]);
 TSVCSByte(GetArgPtr(1)^) := FlaggedIDIV_B(TSVCSByte(GetArgVal(1)),TSVCSByte(GetArgVal(0)),TSVCSByte(GetArgVal(2)),TSVCSByte(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -3365,6 +3472,7 @@ procedure TSVCProcessor_0000.Instruction_D0_7A;   // IDIV       mem16,  reg16,  
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16,iatIMM16]);
 TSVCSWord(GetArgPtr(1)^) := FlaggedIDIV_W(TSVCSWord(GetArgVal(1)),TSVCSWord(GetArgVal(0)),TSVCSWord(GetArgVal(2)),TSVCSWord(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -3373,6 +3481,7 @@ procedure TSVCProcessor_0000.Instruction_D0_7B;   // IDIV       reg8,   mem8,   
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8,iatIMM8]);
 TSVCSByte(GetArgPtr(1)^) := FlaggedIDIV_B(TSVCSByte(GetArgVal(1)),TSVCSByte(GetArgVal(0)),TSVCSByte(GetArgVal(2)),TSVCSByte(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -3381,6 +3490,7 @@ procedure TSVCProcessor_0000.Instruction_D0_7C;   // IDIV       reg16,  mem16,  
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16,iatIMM16]);
 TSVCSWord(GetArgPtr(1)^) := FlaggedIDIV_W(TSVCSWord(GetArgVal(1)),TSVCSWord(GetArgVal(0)),TSVCSWord(GetArgVal(2)),TSVCSWord(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -3405,6 +3515,7 @@ procedure TSVCProcessor_0000.Instruction_D0_7F;   // IDIV       reg8,   reg8,   
 begin
 ArgumentsDecode(True,[iatREG8,iatREG8,iatMEM8]);
 TSVCSByte(GetArgPtr(1)^) := FlaggedIDIV_B(TSVCSByte(GetArgVal(1)),TSVCSByte(GetArgVal(0)),TSVCSByte(GetArgVal(2)),TSVCSByte(GetArgPtr(0)^));
+DoMemoryReadEvent(GetArgAddr(2));
 end;
 
 //------------------------------------------------------------------------------
@@ -3413,6 +3524,7 @@ procedure TSVCProcessor_0000.Instruction_D0_80;   // IDIV       reg16,  reg16,  
 begin
 ArgumentsDecode(True,[iatREG16,iatREG16,iatMEM16]);
 TSVCSWord(GetArgPtr(1)^) := FlaggedIDIV_W(TSVCSWord(GetArgVal(1)),TSVCSWord(GetArgVal(0)),TSVCSWord(GetArgVal(2)),TSVCSWord(GetArgPtr(0)^));
+DoMemoryReadEvent(GetArgAddr(2));
 end;
 
 //------------------------------------------------------------------------------
@@ -3421,6 +3533,7 @@ procedure TSVCProcessor_0000.Instruction_D0_81;   // IDIV       reg8,   mem8,   
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8,iatREG8]);
 TSVCSByte(GetArgPtr(1)^) := FlaggedIDIV_B(TSVCSByte(GetArgVal(1)),TSVCSByte(GetArgVal(0)),TSVCSByte(GetArgVal(2)),TSVCSByte(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -3429,6 +3542,7 @@ procedure TSVCProcessor_0000.Instruction_D0_82;   // IDIV       reg16,  mem16,  
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16,iatREG16]);
 TSVCSWord(GetArgPtr(1)^) := FlaggedIDIV_W(TSVCSWord(GetArgVal(1)),TSVCSWord(GetArgVal(0)),TSVCSWord(GetArgVal(2)),TSVCSWord(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -3437,6 +3551,7 @@ procedure TSVCProcessor_0000.Instruction_D0_83;   // IDIV       mem8,   reg8,   
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8,iatREG8]);
 TSVCSByte(GetArgPtr(1)^) := FlaggedIDIV_B(TSVCSByte(GetArgVal(1)),TSVCSByte(GetArgVal(0)),TSVCSByte(GetArgVal(2)),TSVCSByte(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -3445,6 +3560,7 @@ procedure TSVCProcessor_0000.Instruction_D0_84;   // IDIV       mem16,  reg16,  
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16,iatREG16]);
 TSVCSWord(GetArgPtr(1)^) := FlaggedIDIV_W(TSVCSWord(GetArgVal(1)),TSVCSWord(GetArgVal(0)),TSVCSWord(GetArgVal(2)),TSVCSWord(GetArgPtr(0)^));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -3485,6 +3601,7 @@ procedure TSVCProcessor_0000.Instruction_D0_89;   // MOD        reg8,   mem8
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedMOD_B(TSVCByte(GetArgVal(0)),0,TSVCByte(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -3493,6 +3610,7 @@ procedure TSVCProcessor_0000.Instruction_D0_8A;   // MOD        reg16,  mem16
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedMOD_W(TSVCWord(GetArgVal(0)),0,TSVCWord(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -3501,6 +3619,7 @@ procedure TSVCProcessor_0000.Instruction_D0_8B;   // MOD        mem8,   reg8
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedMOD_B(TSVCByte(GetArgVal(0)),0,TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -3509,6 +3628,7 @@ procedure TSVCProcessor_0000.Instruction_D0_8C;   // MOD        mem16,  reg16
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedMOD_W(TSVCWord(GetArgVal(0)),0,TSVCWord(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -3533,6 +3653,7 @@ procedure TSVCProcessor_0000.Instruction_D0_8F;   // MOD        mem8,   reg8,   
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8,iatIMM8]);
 TSVCByte(GetArgPtr(1)^) := FlaggedMOD_B(TSVCByte(GetArgVal(1)),TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(2)));
+DoMemoryReadEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -3541,6 +3662,7 @@ procedure TSVCProcessor_0000.Instruction_D0_90;   // MOD        mem16,  reg16,  
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16,iatIMM16]);
 TSVCWord(GetArgPtr(1)^) := FlaggedMOD_W(TSVCWord(GetArgVal(1)),TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(2)));
+DoMemoryReadEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -3549,6 +3671,7 @@ procedure TSVCProcessor_0000.Instruction_D0_91;   // MOD        reg8,   mem8,   
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8,iatIMM8]);
 TSVCByte(GetArgPtr(1)^) := FlaggedMOD_B(TSVCByte(GetArgVal(1)),TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(2)));
+DoMemoryWriteEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -3557,6 +3680,7 @@ procedure TSVCProcessor_0000.Instruction_D0_92;   // MOD        reg16,  mem16,  
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16,iatIMM16]);
 TSVCWord(GetArgPtr(1)^) := FlaggedMOD_W(TSVCWord(GetArgVal(1)),TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(2)));
+DoMemoryWriteEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -3581,6 +3705,7 @@ procedure TSVCProcessor_0000.Instruction_D0_95;   // MOD        reg8,   reg8,   
 begin
 ArgumentsDecode(True,[iatREG8,iatREG8,iatMEM8]);
 TSVCByte(GetArgPtr(1)^) := FlaggedMOD_B(TSVCByte(GetArgVal(1)),TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(2)));
+DoMemoryReadEvent(GetArgAddr(2));
 end;
 
 //------------------------------------------------------------------------------
@@ -3589,6 +3714,7 @@ procedure TSVCProcessor_0000.Instruction_D0_96;   // MOD        reg16,  reg16,  
 begin
 ArgumentsDecode(True,[iatREG16,iatREG16,iatMEM16]);
 TSVCWord(GetArgPtr(1)^) := FlaggedMOD_W(TSVCWord(GetArgVal(1)),TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(2)));
+DoMemoryReadEvent(GetArgAddr(2));
 end;
 
 //------------------------------------------------------------------------------
@@ -3597,6 +3723,7 @@ procedure TSVCProcessor_0000.Instruction_D0_97;   // MOD        reg8,   mem8,   
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8,iatREG8]);
 TSVCByte(GetArgPtr(1)^) := FlaggedMOD_B(TSVCByte(GetArgVal(1)),TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(2)));
+DoMemoryWriteEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -3605,6 +3732,7 @@ procedure TSVCProcessor_0000.Instruction_D0_98;   // MOD        reg16,  mem16,  
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16,iatREG16]);
 TSVCWord(GetArgPtr(1)^) := FlaggedMOD_W(TSVCWord(GetArgVal(1)),TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(2)));
+DoMemoryWriteEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -3613,6 +3741,7 @@ procedure TSVCProcessor_0000.Instruction_D0_99;   // MOD        mem8,   reg8,   
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8,iatREG8]);
 TSVCByte(GetArgPtr(1)^) := FlaggedMOD_B(TSVCByte(GetArgVal(1)),TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(2)));
+DoMemoryReadEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -3621,6 +3750,7 @@ procedure TSVCProcessor_0000.Instruction_D0_9A;   // MOD        mem16,  reg16,  
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16,iatREG16]);
 TSVCWord(GetArgPtr(1)^) := FlaggedMOD_W(TSVCWord(GetArgVal(1)),TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(2)));
+DoMemoryReadEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -3661,6 +3791,7 @@ procedure TSVCProcessor_0000.Instruction_D0_9F;   // IMOD       reg8,   mem8
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8]);
 TSVCSByte(GetArgPtr(0)^) := FlaggedIMOD_B(TSVCSByte(GetArgVal(0)),0,TSVCSByte(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -3669,6 +3800,7 @@ procedure TSVCProcessor_0000.Instruction_D0_A0;   // IMOD       reg16,  mem16
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16]);
 TSVCSWord(GetArgPtr(0)^) := FlaggedIMOD_W(TSVCSWord(GetArgVal(0)),0,TSVCSWord(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -3677,6 +3809,7 @@ procedure TSVCProcessor_0000.Instruction_D0_A1;   // IMOD       mem8,   reg8
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 TSVCSByte(GetArgPtr(0)^) := FlaggedIMOD_B(TSVCSByte(GetArgVal(0)),0,TSVCSByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -3685,6 +3818,7 @@ procedure TSVCProcessor_0000.Instruction_D0_A2;   // IMOD       mem16,  reg16
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16]);
 TSVCSWord(GetArgPtr(0)^) := FlaggedIMOD_W(TSVCSWord(GetArgVal(0)),0,TSVCSWord(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -3709,6 +3843,7 @@ procedure TSVCProcessor_0000.Instruction_D0_A5;   // IMOD       mem8,   reg8,   
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8,iatIMM8]);
 TSVCSByte(GetArgPtr(1)^) := FlaggedIMOD_B(TSVCSByte(GetArgVal(1)),TSVCSByte(GetArgVal(0)),TSVCSByte(GetArgVal(2)));
+DoMemoryReadEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -3717,6 +3852,7 @@ procedure TSVCProcessor_0000.Instruction_D0_A6;   // IMOD       mem16,  reg16,  
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16,iatIMM16]);
 TSVCSWord(GetArgPtr(1)^) := FlaggedIMOD_W(TSVCSWord(GetArgVal(1)),TSVCSWord(GetArgVal(0)),TSVCSWord(GetArgVal(2)));
+DoMemoryReadEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -3725,6 +3861,7 @@ procedure TSVCProcessor_0000.Instruction_D0_A7;   // IMOD       reg8,   mem8,   
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8,iatIMM8]);
 TSVCSByte(GetArgPtr(1)^) := FlaggedIMOD_B(TSVCSByte(GetArgVal(1)),TSVCSByte(GetArgVal(0)),TSVCSByte(GetArgVal(2)));
+DoMemoryWriteEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -3733,6 +3870,7 @@ procedure TSVCProcessor_0000.Instruction_D0_A8;   // IMOD       reg16,  mem16,  
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16,iatIMM16]);
 TSVCSWord(GetArgPtr(1)^) := FlaggedIMOD_W(TSVCSWord(GetArgVal(1)),TSVCSWord(GetArgVal(0)),TSVCSWord(GetArgVal(2)));
+DoMemoryWriteEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -3757,6 +3895,7 @@ procedure TSVCProcessor_0000.Instruction_D0_AB;   // IMOD       reg8,   reg8,   
 begin
 ArgumentsDecode(True,[iatREG8,iatREG8,iatMEM8]);
 TSVCSByte(GetArgPtr(1)^) := FlaggedIMOD_B(TSVCSByte(GetArgVal(1)),TSVCSByte(GetArgVal(0)),TSVCSByte(GetArgVal(2)));
+DoMemoryReadEvent(GetArgAddr(2));
 end;
 
 //------------------------------------------------------------------------------
@@ -3765,6 +3904,7 @@ procedure TSVCProcessor_0000.Instruction_D0_AC;   // IMOD       reg16,  reg16,  
 begin
 ArgumentsDecode(True,[iatREG16,iatREG16,iatMEM16]);
 TSVCSWord(GetArgPtr(1)^) := FlaggedIMOD_W(TSVCSWord(GetArgVal(1)),TSVCSWord(GetArgVal(0)),TSVCSWord(GetArgVal(2)));
+DoMemoryReadEvent(GetArgAddr(2));
 end;
 
 //------------------------------------------------------------------------------
@@ -3773,6 +3913,7 @@ procedure TSVCProcessor_0000.Instruction_D0_AD;   // IMOD       reg8,   mem8,   
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8,iatREG8]);
 TSVCSByte(GetArgPtr(1)^) := FlaggedIMOD_B(TSVCSByte(GetArgVal(1)),TSVCSByte(GetArgVal(0)),TSVCSByte(GetArgVal(2)));
+DoMemoryWriteEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -3781,6 +3922,7 @@ procedure TSVCProcessor_0000.Instruction_D0_AE;   // IMOD       reg16,  mem16,  
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16,iatREG16]);
 TSVCSWord(GetArgPtr(1)^) := FlaggedIMOD_W(TSVCSWord(GetArgVal(1)),TSVCSWord(GetArgVal(0)),TSVCSWord(GetArgVal(2)));
+DoMemoryWriteEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -3789,6 +3931,7 @@ procedure TSVCProcessor_0000.Instruction_D0_AF;   // IMOD       mem8,   reg8,   
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8,iatREG8]);
 TSVCSByte(GetArgPtr(1)^) := FlaggedIMOD_B(TSVCSByte(GetArgVal(1)),TSVCSByte(GetArgVal(0)),TSVCSByte(GetArgVal(2)));
+DoMemoryReadEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -3797,6 +3940,7 @@ procedure TSVCProcessor_0000.Instruction_D0_B0;   // IMOD       mem16,  reg16,  
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16,iatREG16]);
 TSVCSWord(GetArgPtr(1)^) := FlaggedIMOD_W(TSVCSWord(GetArgVal(1)),TSVCSWord(GetArgVal(0)),TSVCSWord(GetArgVal(2)));
+DoMemoryReadEvent(GetArgAddr(0));
 end;
 
 //==============================================================================
@@ -3821,6 +3965,7 @@ procedure TSVCProcessor_0000.Instruction_D1_03;   // NOT        mem8
 begin
 ArgumentsDecode(True,[iatMEM8]);
 TSVCByte(GetArgPtr(0)^) := not TSVCByte(GetArgVal(0));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -3829,6 +3974,7 @@ procedure TSVCProcessor_0000.Instruction_D1_04;   // NOT        mem16
 begin
 ArgumentsDecode(True,[iatMEM16]);
 TSVCWord(GetArgPtr(0)^) := not TSVCWord(GetArgVal(0));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -3869,6 +4015,7 @@ procedure TSVCProcessor_0000.Instruction_D1_09;   // AND        reg8,   mem8
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedAND_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -3877,6 +4024,7 @@ procedure TSVCProcessor_0000.Instruction_D1_0A;   // AND        reg16,  mem16
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedAND_W(TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -3885,6 +4033,7 @@ procedure TSVCProcessor_0000.Instruction_D1_0B;   // AND        mem8,   reg8
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedAND_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -3893,6 +4042,7 @@ procedure TSVCProcessor_0000.Instruction_D1_0C;   // AND        mem16,  reg16
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedAND_W(TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -3933,6 +4083,7 @@ procedure TSVCProcessor_0000.Instruction_D1_11;   // OR         reg8,   mem8
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedOR_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -3941,6 +4092,7 @@ procedure TSVCProcessor_0000.Instruction_D1_12;   // OR         reg16,  mem16
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedOR_W(TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -3949,6 +4101,7 @@ procedure TSVCProcessor_0000.Instruction_D1_13;   // OR         mem8,   reg8
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedOR_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -3957,6 +4110,7 @@ procedure TSVCProcessor_0000.Instruction_D1_14;   // OR         mem16,  reg16
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedOR_W(TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -3997,6 +4151,7 @@ procedure TSVCProcessor_0000.Instruction_D1_19;   // XOR        reg8,   mem8
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedXOR_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -4005,6 +4160,7 @@ procedure TSVCProcessor_0000.Instruction_D1_1A;   // XOR        reg16,  mem16
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedXOR_W(TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(1)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -4013,6 +4169,7 @@ procedure TSVCProcessor_0000.Instruction_D1_1B;   // XOR        mem8,   reg8
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedXOR_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -4021,6 +4178,7 @@ procedure TSVCProcessor_0000.Instruction_D1_1C;   // XOR        mem16,  reg16
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedXOR_W(TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //==============================================================================
@@ -4045,6 +4203,7 @@ procedure TSVCProcessor_0000.Instruction_D1_1F;   // SHR        mem8
 begin
 ArgumentsDecode(True,[iatMEM8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedSHR_B(TSVCByte(GetArgVal(0)),1);
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -4053,6 +4212,7 @@ procedure TSVCProcessor_0000.Instruction_D1_20;   // SHR        mem16
 begin
 ArgumentsDecode(True,[iatMEM16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedSHR_W(TSVCWord(GetArgVal(0)),1);
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -4077,6 +4237,7 @@ procedure TSVCProcessor_0000.Instruction_D1_23;   // SHR        mem8,   imm8
 begin
 ArgumentsDecode(True,[iatMEM8,iatIMM8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedSHR_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
   
 //------------------------------------------------------------------------------
@@ -4085,6 +4246,7 @@ procedure TSVCProcessor_0000.Instruction_D1_24;   // SHR        mem16,  imm8
 begin
 ArgumentsDecode(True,[iatMEM16,iatIMM8]);
 TSVCWord(GetArgPtr(0)^) := FlaggedSHR_W(TSVCWord(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
    
 //------------------------------------------------------------------------------
@@ -4109,6 +4271,7 @@ procedure TSVCProcessor_0000.Instruction_D1_27;   // SHR        mem8,   reg8
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedSHR_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
   
 //------------------------------------------------------------------------------
@@ -4117,6 +4280,7 @@ procedure TSVCProcessor_0000.Instruction_D1_28;   // SHR        mem16,  reg8
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG8]);
 TSVCWord(GetArgPtr(0)^) := FlaggedSHR_W(TSVCWord(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -4141,6 +4305,7 @@ procedure TSVCProcessor_0000.Instruction_D1_2B;   // SAR        mem8
 begin
 ArgumentsDecode(True,[iatMEM8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedSAR_B(TSVCByte(GetArgVal(0)),1);
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
   
 //------------------------------------------------------------------------------
@@ -4149,6 +4314,7 @@ procedure TSVCProcessor_0000.Instruction_D1_2C;   // SAR        mem16
 begin
 ArgumentsDecode(True,[iatMEM16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedSAR_W(TSVCWord(GetArgVal(0)),1);
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
   
 //------------------------------------------------------------------------------
@@ -4173,6 +4339,7 @@ procedure TSVCProcessor_0000.Instruction_D1_2F;   // SAR        mem8,   imm8
 begin
 ArgumentsDecode(True,[iatMEM8,iatIMM8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedSAR_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
       
 //------------------------------------------------------------------------------
@@ -4181,7 +4348,10 @@ procedure TSVCProcessor_0000.Instruction_D1_30;   // SAR        mem16,  imm8
 begin
 ArgumentsDecode(True,[iatMEM16,iatIMM8]);
 TSVCWord(GetArgPtr(0)^) := FlaggedSAR_W(TSVCWord(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
+
+//------------------------------------------------------------------------------
 
 procedure TSVCProcessor_0000.Instruction_D1_31;   // SAR        reg8,   reg8
 begin
@@ -4203,6 +4373,7 @@ procedure TSVCProcessor_0000.Instruction_D1_33;   // SAR        mem8,   reg8
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedSAR_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
       
 //------------------------------------------------------------------------------
@@ -4211,6 +4382,7 @@ procedure TSVCProcessor_0000.Instruction_D1_34;   // SAR        mem16,  reg8
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG8]);
 TSVCWord(GetArgPtr(0)^) := FlaggedSAR_W(TSVCWord(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -4235,6 +4407,7 @@ procedure TSVCProcessor_0000.Instruction_D1_37;   // SHL        mem8
 begin
 ArgumentsDecode(True,[iatMEM8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedSHL_B(TSVCByte(GetArgVal(0)),1);
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
      
 //------------------------------------------------------------------------------
@@ -4243,6 +4416,7 @@ procedure TSVCProcessor_0000.Instruction_D1_38;   // SHL        mem16
 begin
 ArgumentsDecode(True,[iatMEM16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedSHL_W(TSVCWord(GetArgVal(0)),1);
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
     
 //------------------------------------------------------------------------------
@@ -4267,6 +4441,7 @@ procedure TSVCProcessor_0000.Instruction_D1_3B;   // SHL        mem8,   imm8
 begin
 ArgumentsDecode(True,[iatMEM8,iatIMM8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedSHL_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
  
 //------------------------------------------------------------------------------
@@ -4275,6 +4450,7 @@ procedure TSVCProcessor_0000.Instruction_D1_3C;   // SHL        mem16,  imm8
 begin
 ArgumentsDecode(True,[iatMEM16,iatIMM8]);
 TSVCWord(GetArgPtr(0)^) := FlaggedSHL_W(TSVCWord(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
   
 //------------------------------------------------------------------------------
@@ -4299,6 +4475,7 @@ procedure TSVCProcessor_0000.Instruction_D1_3F;   // SHL        mem8,   reg8
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedSHL_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
   
 //------------------------------------------------------------------------------
@@ -4307,6 +4484,7 @@ procedure TSVCProcessor_0000.Instruction_D1_40;   // SHL        mem16,  reg8
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG8]);
 TSVCWord(GetArgPtr(0)^) := FlaggedSHL_W(TSVCWord(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -4331,6 +4509,7 @@ procedure TSVCProcessor_0000.Instruction_D1_43;   // SAL        mem8
 begin
 ArgumentsDecode(True,[iatMEM8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedSHL_B(TSVCByte(GetArgVal(0)),1);
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
       
 //------------------------------------------------------------------------------
@@ -4339,6 +4518,7 @@ procedure TSVCProcessor_0000.Instruction_D1_44;   // SAL        mem16
 begin
 ArgumentsDecode(True,[iatMEM16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedSHL_W(TSVCWord(GetArgVal(0)),1);
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
      
 //------------------------------------------------------------------------------
@@ -4363,6 +4543,7 @@ procedure TSVCProcessor_0000.Instruction_D1_47;   // SAL        mem8,   imm8
 begin
 ArgumentsDecode(True,[iatMEM8,iatIMM8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedSHL_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
    
 //------------------------------------------------------------------------------
@@ -4371,6 +4552,7 @@ procedure TSVCProcessor_0000.Instruction_D1_48;   // SAL        mem16,  imm8
 begin
 ArgumentsDecode(True,[iatMEM16,iatIMM8]);
 TSVCWord(GetArgPtr(0)^) := FlaggedSHL_W(TSVCWord(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
     
 //------------------------------------------------------------------------------
@@ -4395,6 +4577,7 @@ procedure TSVCProcessor_0000.Instruction_D1_4B;   // SAL        mem8,   reg8
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedSHL_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
   
 //------------------------------------------------------------------------------
@@ -4403,6 +4586,7 @@ procedure TSVCProcessor_0000.Instruction_D1_4C;   // SAL        mem16,  reg8
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG8]);
 TSVCWord(GetArgPtr(0)^) := FlaggedSHL_W(TSVCWord(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -4427,6 +4611,7 @@ procedure TSVCProcessor_0000.Instruction_D1_4F;   // ROR        mem8
 begin
 ArgumentsDecode(True,[iatMEM8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedROR_B(TSVCByte(GetArgVal(0)),1);
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
       
 //------------------------------------------------------------------------------
@@ -4435,6 +4620,7 @@ procedure TSVCProcessor_0000.Instruction_D1_50;   // ROR        mem16
 begin
 ArgumentsDecode(True,[iatMEM16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedROR_W(TSVCWord(GetArgVal(0)),1);
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
      
 //------------------------------------------------------------------------------
@@ -4459,6 +4645,7 @@ procedure TSVCProcessor_0000.Instruction_D1_53;   // ROR        mem8,   imm8
 begin
 ArgumentsDecode(True,[iatMEM8,iatIMM8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedROR_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
    
 //------------------------------------------------------------------------------
@@ -4467,6 +4654,7 @@ procedure TSVCProcessor_0000.Instruction_D1_54;   // ROR        mem16,  imm8
 begin
 ArgumentsDecode(True,[iatMEM16,iatIMM8]);
 TSVCWord(GetArgPtr(0)^) := FlaggedROR_W(TSVCWord(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
     
 //------------------------------------------------------------------------------
@@ -4491,6 +4679,7 @@ procedure TSVCProcessor_0000.Instruction_D1_57;   // ROR        mem8,   reg8
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedROR_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
   
 //------------------------------------------------------------------------------
@@ -4499,6 +4688,7 @@ procedure TSVCProcessor_0000.Instruction_D1_58;   // ROR        mem16,  reg8
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG8]);
 TSVCWord(GetArgPtr(0)^) := FlaggedROR_W(TSVCWord(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -4523,6 +4713,7 @@ procedure TSVCProcessor_0000.Instruction_D1_5B;   // ROL        mem8
 begin
 ArgumentsDecode(True,[iatMEM8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedROL_B(TSVCByte(GetArgVal(0)),1);
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -4531,6 +4722,7 @@ procedure TSVCProcessor_0000.Instruction_D1_5C;   // ROL        mem16
 begin
 ArgumentsDecode(True,[iatMEM16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedROL_W(TSVCWord(GetArgVal(0)),1);
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -4555,6 +4747,7 @@ procedure TSVCProcessor_0000.Instruction_D1_5F;   // ROL        mem8,   imm8
 begin
 ArgumentsDecode(True,[iatMEM8,iatIMM8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedROL_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -4563,6 +4756,7 @@ procedure TSVCProcessor_0000.Instruction_D1_60;   // ROL        mem16,  imm8
 begin
 ArgumentsDecode(True,[iatMEM16,iatIMM8]);
 TSVCWord(GetArgPtr(0)^) := FlaggedROL_W(TSVCWord(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -4587,6 +4781,7 @@ procedure TSVCProcessor_0000.Instruction_D1_63;   // ROL        mem8,   reg8
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedROL_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -4595,6 +4790,7 @@ procedure TSVCProcessor_0000.Instruction_D1_64;   // ROL        mem16,  reg8
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG8]);
 TSVCWord(GetArgPtr(0)^) := FlaggedROL_W(TSVCWord(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -4619,6 +4815,7 @@ procedure TSVCProcessor_0000.Instruction_D1_67;   // RCR        mem8
 begin
 ArgumentsDecode(True,[iatMEM8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedRCR_B(TSVCByte(GetArgVal(0)),1);
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -4627,6 +4824,7 @@ procedure TSVCProcessor_0000.Instruction_D1_68;   // RCR        mem16
 begin
 ArgumentsDecode(True,[iatMEM16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedRCR_W(TSVCWord(GetArgVal(0)),1);
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -4651,6 +4849,7 @@ procedure TSVCProcessor_0000.Instruction_D1_6B;   // RCR        mem8,   imm8
 begin
 ArgumentsDecode(True,[iatMEM8,iatIMM8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedRCR_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -4659,6 +4858,7 @@ procedure TSVCProcessor_0000.Instruction_D1_6C;   // RCR        mem16,  imm8
 begin
 ArgumentsDecode(True,[iatMEM16,iatIMM8]);
 TSVCWord(GetArgPtr(0)^) := FlaggedRCR_W(TSVCWord(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -4683,6 +4883,7 @@ procedure TSVCProcessor_0000.Instruction_D1_6F;   // RCR        mem8,   reg8
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedRCR_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -4691,6 +4892,7 @@ procedure TSVCProcessor_0000.Instruction_D1_70;   // RCR        mem16,  reg8
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG8]);
 TSVCWord(GetArgPtr(0)^) := FlaggedRCR_W(TSVCWord(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -4715,6 +4917,7 @@ procedure TSVCProcessor_0000.Instruction_D1_73;   // RCL        mem8
 begin
 ArgumentsDecode(True,[iatMEM8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedRCL_B(TSVCByte(GetArgVal(0)),1);
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -4723,6 +4926,7 @@ procedure TSVCProcessor_0000.Instruction_D1_74;   // RCL        mem16
 begin
 ArgumentsDecode(True,[iatMEM16]);
 TSVCWord(GetArgPtr(0)^) := FlaggedRCL_W(TSVCWord(GetArgVal(0)),1);
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -4747,6 +4951,7 @@ procedure TSVCProcessor_0000.Instruction_D1_77;   // RCL        mem8,   imm8
 begin
 ArgumentsDecode(True,[iatMEM8,iatIMM8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedRCL_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -4755,6 +4960,7 @@ procedure TSVCProcessor_0000.Instruction_D1_78;   // RCL        mem16,  imm8
 begin
 ArgumentsDecode(True,[iatMEM16,iatIMM8]);
 TSVCWord(GetArgPtr(0)^) := FlaggedRCL_W(TSVCWord(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -4779,6 +4985,7 @@ procedure TSVCProcessor_0000.Instruction_D1_7B;   // RCL        mem8,   reg8
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8]);
 TSVCByte(GetArgPtr(0)^) := FlaggedRCL_B(TSVCByte(GetArgVal(0)),TSVCByte(GetArgVal(1)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -4833,6 +5040,7 @@ If fMemory.IsValidArea(Addr,SVC_SZ_BYTE) then
   SetFlagValue(SVC_REG_FLAGS_CARRY,BT(TSVCByte(fMemory.AddrPtr(Addr)^),UInt8(TSVCByte(GetArgVal(1)) and $7)))
 else
   raise ESVCInterruptException.Create(SVC_EXCEPTION_MEMORYACCESS,Addr);
+DoMemoryReadEvent(Addr);
 end;
   
 //------------------------------------------------------------------------------
@@ -4847,6 +5055,7 @@ If fMemory.IsValidArea(Addr,SVC_SZ_WORD) then
   SetFlagValue(SVC_REG_FLAGS_CARRY,BT(TSVCWord(fMemory.AddrPtr(Addr)^),UInt8(TSVCWord(GetArgVal(1)) and $F)))
 else
   raise ESVCInterruptException.Create(SVC_EXCEPTION_MEMORYACCESS,Addr);
+DoMemoryReadEvent(Addr);
 end;
  
 //------------------------------------------------------------------------------
@@ -4861,6 +5070,7 @@ If fMemory.IsValidArea(Addr,SVC_SZ_BYTE) then
   SetFlagValue(SVC_REG_FLAGS_CARRY,BT(TSVCByte(fMemory.AddrPtr(Addr)^),UInt8(TSVCByte(GetArgVal(1)) and $7)))
 else
   raise ESVCInterruptException.Create(SVC_EXCEPTION_MEMORYACCESS,Addr);
+DoMemoryReadEvent(Addr);;
 end;
  
 //------------------------------------------------------------------------------
@@ -4875,6 +5085,7 @@ If fMemory.IsValidArea(Addr,SVC_SZ_WORD) then
   SetFlagValue(SVC_REG_FLAGS_CARRY,BT(TSVCWord(fMemory.AddrPtr(Addr)^),UInt8(TSVCWord(GetArgVal(1)) and $F)))
 else
   raise ESVCInterruptException.Create(SVC_EXCEPTION_MEMORYACCESS,Addr);
+DoMemoryReadEvent(Addr);
 end;
 
 //------------------------------------------------------------------------------
@@ -4921,6 +5132,7 @@ If fMemory.IsValidArea(Addr,SVC_SZ_BYTE) then
   SetFlagValue(SVC_REG_FLAGS_CARRY,BTS(TSVCByte(fMemory.AddrPtr(Addr)^),UInt8(TSVCByte(GetArgVal(1)) and $7)))
 else
   raise ESVCInterruptException.Create(SVC_EXCEPTION_MEMORYACCESS,Addr);
+DoMemoryWriteEvent(Addr);
 end;
   
 //------------------------------------------------------------------------------
@@ -4935,6 +5147,7 @@ If fMemory.IsValidArea(Addr,SVC_SZ_WORD) then
   SetFlagValue(SVC_REG_FLAGS_CARRY,BTS(TSVCWord(fMemory.AddrPtr(Addr)^),UInt8(TSVCWord(GetArgVal(1)) and $F)))
 else
   raise ESVCInterruptException.Create(SVC_EXCEPTION_MEMORYACCESS,Addr);
+DoMemoryWriteEvent(Addr);
 end;
  
 //------------------------------------------------------------------------------
@@ -4949,6 +5162,7 @@ If fMemory.IsValidArea(Addr,SVC_SZ_BYTE) then
   SetFlagValue(SVC_REG_FLAGS_CARRY,BTS(TSVCByte(fMemory.AddrPtr(Addr)^),UInt8(TSVCByte(GetArgVal(1)) and $7)))
 else
   raise ESVCInterruptException.Create(SVC_EXCEPTION_MEMORYACCESS,Addr);
+DoMemoryWriteEvent(Addr);
 end;
 
 //------------------------------------------------------------------------------
@@ -4963,6 +5177,7 @@ If fMemory.IsValidArea(Addr,SVC_SZ_WORD) then
   SetFlagValue(SVC_REG_FLAGS_CARRY,BTS(TSVCWord(fMemory.AddrPtr(Addr)^),UInt8(TSVCWord(GetArgVal(1)) and $F)))
 else
   raise ESVCInterruptException.Create(SVC_EXCEPTION_MEMORYACCESS,Addr);
+DoMemoryWriteEvent(Addr);
 end;
 
 //------------------------------------------------------------------------------
@@ -5009,6 +5224,7 @@ If fMemory.IsValidArea(Addr,SVC_SZ_BYTE) then
   SetFlagValue(SVC_REG_FLAGS_CARRY,BTR(TSVCByte(fMemory.AddrPtr(Addr)^),UInt8(TSVCByte(GetArgVal(1)) and $7)))
 else
   raise ESVCInterruptException.Create(SVC_EXCEPTION_MEMORYACCESS,Addr);
+DoMemoryWriteEvent(Addr);
 end;
 
 //------------------------------------------------------------------------------
@@ -5023,6 +5239,7 @@ If fMemory.IsValidArea(Addr,SVC_SZ_WORD) then
   SetFlagValue(SVC_REG_FLAGS_CARRY,BTR(TSVCWord(fMemory.AddrPtr(Addr)^),UInt8(TSVCWord(GetArgVal(1)) and $F)))
 else
   raise ESVCInterruptException.Create(SVC_EXCEPTION_MEMORYACCESS,Addr);
+DoMemoryWriteEvent(Addr);
 end;
   
 //------------------------------------------------------------------------------
@@ -5037,6 +5254,7 @@ If fMemory.IsValidArea(Addr,SVC_SZ_BYTE) then
   SetFlagValue(SVC_REG_FLAGS_CARRY,BTR(TSVCByte(fMemory.AddrPtr(Addr)^),UInt8(TSVCByte(GetArgVal(1)) and $7)))
 else
   raise ESVCInterruptException.Create(SVC_EXCEPTION_MEMORYACCESS,Addr);
+DoMemoryWriteEvent(Addr);
 end;
 
 //------------------------------------------------------------------------------
@@ -5051,6 +5269,7 @@ If fMemory.IsValidArea(Addr,SVC_SZ_WORD) then
   SetFlagValue(SVC_REG_FLAGS_CARRY,BTR(TSVCWord(fMemory.AddrPtr(Addr)^),UInt8(TSVCWord(GetArgVal(1)) and $F)))
 else
   raise ESVCInterruptException.Create(SVC_EXCEPTION_MEMORYACCESS,Addr);
+DoMemoryWriteEvent(Addr);
 end;
 
 //------------------------------------------------------------------------------
@@ -5097,6 +5316,7 @@ If fMemory.IsValidArea(Addr,SVC_SZ_BYTE) then
   SetFlagValue(SVC_REG_FLAGS_CARRY,BTC(TSVCByte(fMemory.AddrPtr(Addr)^),UInt8(TSVCByte(GetArgVal(1)) and $7)))
 else
   raise ESVCInterruptException.Create(SVC_EXCEPTION_MEMORYACCESS,Addr);
+DoMemoryWriteEvent(Addr);
 end;
  
 //------------------------------------------------------------------------------
@@ -5111,6 +5331,7 @@ If fMemory.IsValidArea(Addr,SVC_SZ_WORD) then
   SetFlagValue(SVC_REG_FLAGS_CARRY,BTC(TSVCWord(fMemory.AddrPtr(Addr)^),UInt8(TSVCWord(GetArgVal(1)) and $F)))
 else
   raise ESVCInterruptException.Create(SVC_EXCEPTION_MEMORYACCESS,Addr);
+DoMemoryWriteEvent(Addr);
 end;
 
 //------------------------------------------------------------------------------
@@ -5125,6 +5346,7 @@ If fMemory.IsValidArea(Addr,SVC_SZ_BYTE) then
   SetFlagValue(SVC_REG_FLAGS_CARRY,BTC(TSVCByte(fMemory.AddrPtr(Addr)^),UInt8(TSVCByte(GetArgVal(1)) and $7)))
 else
   raise ESVCInterruptException.Create(SVC_EXCEPTION_MEMORYACCESS,Addr);
+DoMemoryWriteEvent(Addr);
 end;
 
 //------------------------------------------------------------------------------
@@ -5139,6 +5361,7 @@ If fMemory.IsValidArea(Addr,SVC_SZ_WORD) then
   SetFlagValue(SVC_REG_FLAGS_CARRY,BTC(TSVCWord(fMemory.AddrPtr(Addr)^),UInt8(TSVCWord(GetArgVal(1)) and $F)))
 else
   raise ESVCInterruptException.Create(SVC_EXCEPTION_MEMORYACCESS,Addr);
+DoMemoryWriteEvent(Addr);
 end;
 
 //------------------------------------------------------------------------------
@@ -5166,6 +5389,7 @@ begin
 ArgumentsDecode(False,[iatREG8,iatMEM8]);
 SetFlagValue(SVC_REG_FLAGS_ZERO,TSVCByte(GetArgVal(1)) = 0);
 TSVCByte(GetArgPtr(0)^) := TSVCByte(BSF(UInt8(TSVCByte(GetArgVal(1)))));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -5175,6 +5399,7 @@ begin
 ArgumentsDecode(False,[iatREG16,iatMEM16]);
 SetFlagValue(SVC_REG_FLAGS_ZERO,TSVCWord(GetArgVal(1)) = 0);
 TSVCWord(GetArgPtr(0)^) := TSVCWord(BSF(UInt16(TSVCWord(GetArgVal(1)))));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -5202,6 +5427,7 @@ begin
 ArgumentsDecode(False,[iatREG8,iatMEM8]);
 SetFlagValue(SVC_REG_FLAGS_ZERO,TSVCByte(GetArgVal(1)) = 0);
 TSVCByte(GetArgPtr(0)^) := TSVCByte(BSR(UInt8(TSVCByte(GetArgVal(1)))));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -5211,6 +5437,7 @@ begin
 ArgumentsDecode(False,[iatREG16,iatMEM16]);
 SetFlagValue(SVC_REG_FLAGS_ZERO,TSVCWord(GetArgVal(1)) = 0);
 TSVCWord(GetArgPtr(0)^) := TSVCWord(BSR(UInt16(TSVCWord(GetArgVal(1)))));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -5227,6 +5454,7 @@ procedure TSVCProcessor_0000.Instruction_D1_A6;   // SHRD       mem16,  reg16,  
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16,iatIMM8]);
 TSVCWord(GetArgPtr(0)^) := FlaggedSHRD_W(TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(1)),TSVCByte(GetArgVal(2)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -5235,6 +5463,7 @@ procedure TSVCProcessor_0000.Instruction_D1_A7;   // SHRD       reg16,  mem16,  
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16,iatIMM8]);
 TSVCWord(GetArgPtr(0)^) := FlaggedSHRD_W(TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(1)),TSVCByte(GetArgVal(2)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -5251,6 +5480,7 @@ procedure TSVCProcessor_0000.Instruction_D1_A9;   // SHRD       mem16,  reg16,  
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16,iatREG8]);
 TSVCWord(GetArgPtr(0)^) := FlaggedSHRD_W(TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(1)),TSVCByte(GetArgVal(2)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
   
 //------------------------------------------------------------------------------
@@ -5259,6 +5489,7 @@ procedure TSVCProcessor_0000.Instruction_D1_AA;   // SHRD       reg16,  mem16,  
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16,iatREG8]);
 TSVCWord(GetArgPtr(0)^) := FlaggedSHRD_W(TSVCWord(GetArgVal(0)),TSVCWord(GetArgVal(1)),TSVCByte(GetArgVal(2)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -5275,6 +5506,7 @@ procedure TSVCProcessor_0000.Instruction_D1_AC;   // SHLD       mem16,  reg16,  
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16,iatIMM8]);
 TSVCWord(GetArgPtr(0)^) := FlaggedSHLD_W(TSVCWord(GetArgVal(1)),TSVCWord(GetArgVal(0)),TSVCByte(GetArgVal(2)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
   
 //------------------------------------------------------------------------------
@@ -5283,6 +5515,7 @@ procedure TSVCProcessor_0000.Instruction_D1_AD;   // SHLD       reg16,  mem16,  
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16,iatIMM8]);
 TSVCWord(GetArgPtr(0)^) := FlaggedSHLD_W(TSVCWord(GetArgVal(1)),TSVCWord(GetArgVal(0)),TSVCByte(GetArgVal(2)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
   
 //------------------------------------------------------------------------------
@@ -5299,6 +5532,7 @@ procedure TSVCProcessor_0000.Instruction_D1_AF;   // SHLD       mem16,  reg16,  
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16,iatREG8]);
 TSVCWord(GetArgPtr(0)^) := FlaggedSHLD_W(TSVCWord(GetArgVal(1)),TSVCWord(GetArgVal(0)),TSVCByte(GetArgVal(2)));
+DoMemoryWriteEvent(GetArgAddr(0));
 end;
   
 //------------------------------------------------------------------------------
@@ -5307,6 +5541,7 @@ procedure TSVCProcessor_0000.Instruction_D1_B0;   // SHLD       reg16,  mem16,  
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16,iatREG8]);
 TSVCWord(GetArgPtr(0)^) := FlaggedSHLD_W(TSVCWord(GetArgVal(1)),TSVCWord(GetArgVal(0)),TSVCByte(GetArgVal(2)));
+DoMemoryReadEvent(GetArgAddr(1));
 end;
 
 //==============================================================================
@@ -5335,6 +5570,7 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
+DoMemoryReadEvent(GetArgVal(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -5363,6 +5599,7 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
+DoMemoryReadEvent(GetArgVal(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -5413,6 +5650,7 @@ If RepeatPrefixActive then
       end;
   end
 else InstructionCycle;
+DoMemoryWriteEvent(GetArgVal(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -5463,6 +5701,7 @@ If RepeatPrefixActive then
       end;
   end
 else InstructionCycle;
+DoMemoryWriteEvent(GetArgVal(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -5540,6 +5779,8 @@ If RepeatPrefixActive then
       end;
   end
 else InstructionCycle;
+DoMemoryReadEvent(GetArgVal(1));
+DoMemoryWriteEvent(GetArgVal(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -5617,6 +5858,8 @@ If RepeatPrefixActive then
       end;
   end
 else InstructionCycle;
+DoMemoryReadEvent(GetArgVal(1));
+DoMemoryWriteEvent(GetArgVal(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -5694,6 +5937,8 @@ If RepeatPrefixActive then
       end;
   end
 else InstructionCycle;
+DoNVMemoryReadEvent(GetArgVal(1));
+DoMemoryWriteEvent(GetArgVal(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -5771,6 +6016,8 @@ If RepeatPrefixActive then
       end;
   end
 else InstructionCycle;
+DoNVMemoryReadEvent(GetArgVal(1));
+DoMemoryWriteEvent(GetArgVal(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -5848,6 +6095,8 @@ If RepeatPrefixActive then
       end;
   end
 else InstructionCycle;
+DoMemoryReadEvent(GetArgVal(1));
+DoNVMemoryWriteEvent(GetArgVal(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -5925,6 +6174,8 @@ If RepeatPrefixActive then
       end;
   end
 else InstructionCycle;
+DoMemoryReadEvent(GetArgVal(1));
+DoNVMemoryWriteEvent(GetArgVal(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -5963,6 +6214,8 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
+DoMemoryReadEvent(GetArgVal(1));
+DoMemoryReadEvent(GetArgVal(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -6001,6 +6254,8 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
+DoMemoryReadEvent(GetArgVal(1));
+DoMemoryReadEvent(GetArgVal(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -6029,6 +6284,7 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
+DoMemoryReadEvent(GetArgVal(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -6057,6 +6313,7 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
+DoMemoryReadEvent(GetArgVal(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -6086,6 +6343,7 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
+DoMemoryWriteEvent(GetArgVal(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -6115,6 +6373,7 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
+DoMemoryWriteEvent(GetArgVal(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -6144,6 +6403,7 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
+DoMemoryWriteEvent(GetArgVal(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -6173,6 +6433,7 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
+DoMemoryWriteEvent(GetArgVal(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -6202,6 +6463,7 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
+DoMemoryReadEvent(GetArgVal(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -6231,6 +6493,7 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
+DoMemoryReadEvent(GetArgVal(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -6260,6 +6523,7 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
+DoMemoryReadEvent(GetArgVal(1));
 end;
 
 //------------------------------------------------------------------------------
@@ -6289,6 +6553,7 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
+DoMemoryReadEvent(GetArgVal(1));
 end;
 
 end.

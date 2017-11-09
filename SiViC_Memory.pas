@@ -10,6 +10,8 @@ uses
   SiViC_Common;
 
 type
+  TSVCMemoryAccessEvent = procedure(Sender: TObject; Address: TSVCNative) of object;
+
   TSVCMemory = class(TObject)
   private
     fMemory:  Pointer;
