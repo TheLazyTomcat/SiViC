@@ -35,7 +35,10 @@ constructor TSVCMemory.Create(Size: TMemSize);
 begin
 inherited Create;
 GetMem(fMemory,Size);
-fSize := Size;
+If Size > TMemSize(High(TSVCNative) + 1) then
+  fSize := TMemSize(High(TSVCNative) + 1)
+else
+  fSize := Size;
 FillChar(fMemory^,fSize,0);
 end;
 

@@ -136,7 +136,7 @@ try
     end;
   Parse_Stage_Final;
 except
-  on ESVCParserParsingError do Result := False
+  on ESVCParsingError do Result := False
     else raise;
 end;
 end;

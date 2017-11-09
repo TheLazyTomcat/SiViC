@@ -54,7 +54,7 @@ const
     (Str: 'ptr';    Modifier: pmodPtr));
 
 type  
-  ESVCParserParsingError = class(Exception);
+  ESVCParsingError = class(Exception);
 
   TSVCParser_Base = class(TObject)
   private
@@ -120,7 +120,7 @@ else fMessages.Arr[fMessages.Count].Position := Position;
 Result := fMessages.Count;
 Inc(fMessages.Count);
 If MessageType = pmtError then
-  raise ESVCParserParsingError.Create('Parsing error');
+  raise ESVCParsingError.Create('Parsing error');
 end;
 
 //------------------------------------------------------------------------------

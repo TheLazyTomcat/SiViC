@@ -9,15 +9,20 @@ uses
   AuxTypes,
   SiViC_Common,
   SiViC_Instructions,
+  SiViC_Program,
   SiViC_ASM_Lists,
   SiViC_ASM_Parser_Base,
   SiViC_ASM_Parser_Instr,
   SiViC_ASM_Parser;
 
+const
+  SVC_ASM_ASSEMBLER_LOWORD_SUFFIX = '_LO';
+  SVC_ASM_ASSEMBLER_HIWORD_SUFFIX = '_HI';   
+
 type
   TSVCAssemblerItem_Sys = record
     Identifier: String;
-    Value:      TSVCNumber;
+    Value:      TSVCComp;
     Counter:    Integer;
     SrcLineIdx: Integer;
   end;
@@ -138,10 +143,12 @@ type
     Function GetAssemblerMessageTypeCount(MessageType: TSVCParserMessageType): Integer;
   protected
     Function IndexOfSys(const Identifier: String): Integer; virtual;
+    Function CheckedIndexOfSys(const Identifier: String): Integer; virtual;
     Function IndexOfConst(const Identifier: String): Integer; virtual;
     Function IndexOfVar(const Identifier: String): Integer; virtual;
     Function IndexOfLabel(const Identifier: String): Integer; virtual;
     Function IndexOfUnresolved(const Identifier: String): Integer; virtual;
+    Function AddDefaultSys(const Identifier: String; Value: TSVCNative): Integer; virtual;
     Function AddSys(Item: TSVCAssemblerItem_Sys): Integer; virtual;
     Function AddConst(Item: TSVCAssemblerItem_Const): Integer; virtual;
     Function AddVar(Item: TSVCAssemblerItem_Var): Integer; virtual;
@@ -149,6 +156,7 @@ type
     Function AddUnresolved(const Identifier: String; SrcLineIdx, SrcLinePos: Integer): Integer; virtual;
     Function RemoveUnresolved(const Identifier: String): Integer; virtual;
     Function AddAssemblerLine(Item: TSVCAssemblerLine): Integer; virtual;
+    procedure AssignSysToConst(const Identifier: String; Value: TSVCComp); virtual;
     class Function BuildAssemblerMessage(MessageType: TSVCParserMessageType; Text: String; LineIdx,Position: Integer): TSVCAssemblerMessage; virtual;
     Function AddAssemblerMessage(Item: TSVCAssemblerMessage): Integer; virtual;
     Function AddWarningMessage(const Text: String; Values: array of const): Integer; overload; virtual;
@@ -157,6 +165,7 @@ type
     procedure SortMessages; virtual;
     procedure CountMessages; virtual;
     procedure FinalizeVariables; virtual;
+    procedure FinalizeSystemValues; virtual;
     procedure FinalizeReplacements; virtual;
     procedure ParsingResultHandler(Sender: TObject; ResultType: TSVCParserResultType; Result: Pointer); virtual;
   public
@@ -167,6 +176,7 @@ type
     Function AssembleUpdate(const Line: String): Boolean; virtual;
     Function AssembleFinal: Boolean; virtual;
     Function Assemble(const SourceCode: TStrings; MaxErrorCount: Integer = -1): Boolean; virtual;
+    Function BuildProgram: TSVCProgram; virtual;
     property SystemValues[Index: Integer]: TSVCAssemblerItem_Sys read GetSys;
     property Constants[Index: Integer]: TSVCAssemblerItem_Const read GetConst;
     property Variables[Index: Integer]: TSVCAssemblerItem_Var read GetVar;
@@ -286,6 +296,15 @@ end;
 
 //------------------------------------------------------------------------------
 
+Function TSVCAssembler.CheckedIndexOfSys(const Identifier: String): Integer;
+begin
+Result := IndexOfSys(Identifier);
+If Result < 0 then
+  raise Exception.CreateFmt('TSVCAssembler.FinalizeSystemValues: %s value not found.',[Identifier]);
+end;
+
+//------------------------------------------------------------------------------
+
 Function TSVCAssembler.IndexOfConst(const Identifier: String): Integer;
 var
   i:  Integer;
@@ -346,6 +365,36 @@ end;
 
 //------------------------------------------------------------------------------
 
+Function TSVCAssembler.AddDefaultSys(const Identifier: String; Value: TSVCNative): Integer;
+var
+  SysTemp:    TSVCAssemblerItem_Sys;
+  ConstTemp:  TSVCAssemblerItem_Const;
+begin
+If IndexOfSys(Identifier) < 0 then
+  begin 
+    SysTemp.Identifier := Identifier;
+    SysTemp.Value := Value;
+    SysTemp.Counter := 0;
+    SysTemp.SrcLineIdx := -1;
+    Result := AddSys(SysTemp);
+    // add low word as constant
+    ConstTemp.Identifier := Identifier + SVC_ASM_ASSEMBLER_LOWORD_SUFFIX;
+    ConstTemp.Value := TSVCNative(Value);
+    ConstTemp.Size := vsNative;
+    ConstTemp.SrcLineIdx := -1;
+    AddConst(ConstTemp);
+    // add high word as constant
+    ConstTemp.Identifier := Identifier + SVC_ASM_ASSEMBLER_HIWORD_SUFFIX;
+    ConstTemp.Value := TSVCNative(Value shr 16);
+    ConstTemp.Size := vsNative;
+    ConstTemp.SrcLineIdx := -1;
+    AddConst(ConstTemp);
+  end
+else raise Exception.Create('TSVCAssembler.AddDefaultSys: Default system value already defined');
+end;
+
+//------------------------------------------------------------------------------
+
 Function TSVCAssembler.AddSys(Item: TSVCAssemblerItem_Sys): Integer;
 begin
 Result := IndexOfSys(Item.Identifier);
@@ -362,6 +411,7 @@ else
   begin
     Inc(fSystemValues.Arr[Result].Counter);
     fSystemValues.Arr[Result].Value := Item.Value;
+    fSystemValues.Arr[Result].SrcLineIdx := Item.SrcLineIdx;
   end;
 end;
 
@@ -449,6 +499,32 @@ end;
 
 //------------------------------------------------------------------------------
 
+procedure TSVCAssembler.AssignSysToConst(const Identifier: String; Value: TSVCComp);
+var
+  Index:  Integer;
+begin
+// low word
+Index := IndexOfConst(Identifier + SVC_ASM_ASSEMBLER_LOWORD_SUFFIX);
+If Index >= 0 then
+  begin
+    fConstants.Arr[Index].Value := TSVCNative(Value);
+    fConstants.Arr[Index].Size := vsNative;
+    fConstants.Arr[Index].SrcLineIdx := fParsedLineIdx;
+  end
+else raise ESVCAssemblerError.CreateFmt('System value %s does not have matching lo-word constant',[AnsiUpperCase(Identifier)]);
+// high word
+Index := IndexOfConst(Identifier + SVC_ASM_ASSEMBLER_HIWORD_SUFFIX);
+If Index >= 0 then
+  begin
+    fConstants.Arr[Index].Value := TSVCNative(Value shr 16);
+    fConstants.Arr[Index].Size := vsNative;
+    fConstants.Arr[Index].SrcLineIdx := fParsedLineIdx;
+  end
+else raise ESVCAssemblerError.CreateFmt('System value %s does not have matching hi-word constant',[AnsiUpperCase(Identifier)]);
+end;
+
+//------------------------------------------------------------------------------
+
 class Function TSVCAssembler.BuildAssemblerMessage(MessageType: TSVCParserMessageType; Text: String; LineIdx,Position: Integer): TSVCAssemblerMessage;
 begin
 Result.MessageType := MessageType;
@@ -491,9 +567,11 @@ end;
 //------------------------------------------------------------------------------
 
 procedure TSVCAssembler.LoadDefaultSystemValues;
-//var
-  //TempSys:  TSVCAssemblerItem_Sys;
+var
+  i:  Integer;
 begin
+For i := Low(SVC_PROGRAM_DEFAULTSYSVALS) to High(SVC_PROGRAM_DEFAULTSYSVALS) do
+  AddDefaultSys(SVC_PROGRAM_DEFAULTSYSVALS[i].Identifier,SVC_PROGRAM_DEFAULTSYSVALS[i].Value);
 end;
 
 //------------------------------------------------------------------------------
@@ -573,6 +651,7 @@ var
 begin
 If fVariables.Count > 0 then
   begin
+    fParsedLineIdx := -1;
     fParsedLinePos := 0;
     If fMemTaken <= TMemSize(High(TSVCNative) + 1) then
       begin
@@ -628,6 +707,50 @@ If fVariables.Count > 0 then
     // line index should be at the end by this point
     else raise ESVCAssemblerError.Create('No memory available for variables');
   end;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCAssembler.FinalizeSystemValues;
+var
+  Index:      Integer;
+  StackSize:  TSVCComp;
+  MemSize:    TSVCComp;
+
+begin
+fParsedLinePos := 0;
+// check stack size
+Index := CheckedIndexOfSys(SVC_PROGRAM_SYSVALNAME_STACKSIZE);
+fParsedLineIdx := fSystemValues.Arr[Index].SrcLineIdx;
+If fSystemValues.Arr[Index].Value >= TSVCComp(High(TSVCNative) + 1) then
+  raise ESVCAssemblerError.Create('Stack cannot fit into available memory')
+else
+  StackSize := fSystemValues.Arr[Index].Value;
+// check NVmem size
+Index := CheckedIndexOfSys(SVC_PROGRAM_SYSVALNAME_NVMEMSIZE);
+fParsedLineIdx := fSystemValues.Arr[Index].SrcLineIdx;
+If fSystemValues.Arr[Index].Value >= TSVCComp(High(TSVCNative) + 1) then
+  raise ESVCAssemblerError.Create('Size of non-volatile memory is out of allowed range');
+// check mem size
+Index := CheckedIndexOfSys(SVC_PROGRAM_SYSVALNAME_MEMSIZE);
+fParsedLineIdx := fSystemValues.Arr[Index].SrcLineIdx;
+If fSystemValues.Arr[Index].Value <= TSVCComp(High(TSVCNative) + 1) then
+  begin
+    If fSystemValues.Arr[Index].Value <= 0 then
+      fSystemValues.Arr[Index].Value := 256
+    else
+      fSystemValues.Arr[Index].Value := (fSystemValues.Arr[Index].Value + $FF) and not TSVCComp($FF);
+  end
+else raise ESVCAssemblerError.Create('Size of allocated memory is out of allowed range');
+MemSize := fSystemValues.Arr[Index].Value;
+// rectify memory size
+fParsedLineIdx := -1;
+If (TSVCComp(fMemTaken) + StackSize) > MemSize then
+  MemSize := (TSVCComp(fMemTaken) + StackSize + $FF) and not TSVCComp($FF);
+If MemSize > TSVCComp(High(TSVCNative) + 1) then
+  raise ESVCAssemblerError.Create('Program cannot fit into available memory');
+fSystemValues.Arr[Index].Value := MemSize;
+AssignSysToConst(SVC_PROGRAM_SYSVALNAME_MEMSIZE,MemSize);
 end;
 
 //------------------------------------------------------------------------------
@@ -762,6 +885,7 @@ case ResultType of
   prtNone:;       // no valid result, do nothing
   prtSys:   begin // system value
               i := IndexOfSys(PSVCParserResult_Sys(Result)^.Identifier);
+              fParsedLinePos := PSVCParserResult_Sys(Result)^.IdentifierPos;
               If i >= 0 then
                 begin
                   If fSystemValues.Arr[i].Counter > 0 then
@@ -770,19 +894,9 @@ case ResultType of
                   Inc(fSystemValues.Arr[i].Counter);
                   fSystemValues.Arr[i].SrcLineIdx := fParsedLineIdx;
                   // assign value to appropriate constant
-                  i := IndexOfConst(fSystemValues.Arr[i].Identifier);
-                  If i >= 0 then
-                    begin
-                      fConstants.Arr[i].Value := fSystemValues.Arr[i].Value;
-                      fConstants.Arr[i].Size := vsNative;
-                      fConstants.Arr[i].SrcLineIdx := fParsedLineIdx;
-                    end
-                  else raise ESVCAssemblerError.CreateFmt('System value %s does not have matching constant',
-                                                          [AnsiUpperCase(fSystemValues.Arr[i].Identifier)]);
+                  AssignSysToConst(fSystemValues.Arr[i].Identifier,fSystemValues.Arr[i].Value);
                 end
-              {$MESSAGE 'change to error'}
-              else AddAssemblerMessage(self.BuildAssemblerMessage(pmtHint,'Unknown system value',
-                     fParsedLineIdx,PSVCParserResult_Sys(Result)^.IdentifierPos));
+              else raise ESVCAssemblerError.CreateFmt('Unknown system value %s',[AnsiUpperCase(PSVCParserResult_Sys(Result)^.Identifier)]);
               TempLine.LineType := altSys;
               AddAssemblerLine(TempLine);
             end;
@@ -965,6 +1079,7 @@ begin
 try
   fMemTaken := fCodeSize;
   FinalizeVariables;
+  FinalizeSystemValues;
   FinalizeReplacements;
   // check if all replacements has been resolved
   If fUnresolved.Count > 0 then
@@ -1017,5 +1132,43 @@ If not Result then
 else Result := AssembleFinal;
 end;
 
+//------------------------------------------------------------------------------
+
+Function TSVCAssembler.BuildProgram: TSVCProgram;
+var
+  Index,i:  Integer;
+  TempPtr:  PBYte;
+begin
+Result := TSVCProgram.Create;
+try
+  // store program code
+  Result.ProgramSize := fCodeSize;                    // this will also allocate memory
+  FillChar(Result.ProgramData^,Result.ProgramSize,0); // make sure the memory is empty
+  TempPtr := PBYte(Result.ProgramData);
+  For Index := Low(fAssemblerLines.Arr) to Pred(fAssemblerLines.Count) do
+    with fAssemblerLines.Arr[Index] do
+      If (LineType in [altData,altInstr]) and (Length(Instruction.Data) > 0) then
+        For i := Low(Instruction.Data) to High(Instruction.Data) do
+          If PtrUInt(TempPtr) < PtrUInt(Result.ProgramData) + PtrUInt(Result.ProgramSize) then
+            begin
+              TempPtr^ := Instruction.Data[i];
+              Inc(TempPtr);
+            end
+          else raise Exception.Create('Program cannot fit into allocated memory');
+  // store variable inits
+  For Index := Low(fVariables.Arr) to Pred(fVariables.Count) do
+    Result.AddVariableInit(fVariables.Arr[Index].Address,fVariables.Arr[Index].Data);
+  // set system values
+  Index := CheckedIndexOfSys(SVC_PROGRAM_SYSVALNAME_STACKSIZE);
+  Result.StackSize := TMemSize(fSystemValues.Arr[Index].Value);
+  Index := CheckedIndexOfSys(SVC_PROGRAM_SYSVALNAME_MEMSIZE);
+  Result.MemorySize := TMemSize(fSystemValues.Arr[Index].Value);
+  Index := CheckedIndexOfSys(SVC_PROGRAM_SYSVALNAME_NVMEMSIZE);
+  Result.NVMemorySize := TMemSize(fSystemValues.Arr[Index].Value);
+except
+  FreeAndNil(Result);
+  raise;
+end;
+end;
 
 end.

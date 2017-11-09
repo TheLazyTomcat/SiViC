@@ -12,7 +12,7 @@ type
   TSVCParserData_Sys = record
     Identifier:     String;
     IdentifierPos:  Integer;
-    Value:          TSVCNumber;
+    Value:          TSVCComp;
   end;
 
   TSVCParserResult_Sys = TSVCParserData_Sys;
@@ -106,8 +106,8 @@ If fLexer[fTokenIndex].TokenType = lttNumber then
   begin
     If TryStrToInt(fLexer[fTokenIndex].Str,Num) then
       begin
-        CheckConstRangeAndIssueWarning(Num,vsNative);
-        fParsingData_Sys.Value := TSVCNumber(Num);
+        CheckConstRangeAndIssueWarning(Num,vsComp);
+        fParsingData_Sys.Value := TSVCComp(Num);
         If fTokenIndex < Pred(fLexer.Count) then
           fParsingStage_Sys := pssValue
         else

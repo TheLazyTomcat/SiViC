@@ -8,7 +8,8 @@ uses
   AuxTypes;
 
 type
-  TSVCValueSize = (vsUndefined,vsByte,vsWord,vsLong,vsQuad,vsNative = vsWord{%H-});
+  TSVCValueSize = (vsUndefined,vsByte,vsWord,vsLong,vsQuad,
+                   vsNative = vsWord{%H-},vsComp = vsLong{%H-});
 
   // basic integer types
   TSVCUByte = UInt8;        TSVCByte = TSVCUByte;
