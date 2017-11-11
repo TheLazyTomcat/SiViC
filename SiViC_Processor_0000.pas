@@ -520,16 +520,6 @@ type
     procedure Instruction_D2_14; virtual; // OUTSW      imm8,   reg16
     procedure Instruction_D2_15; virtual; // OUTSB      reg8,   reg16
     procedure Instruction_D2_16; virtual; // OUTSW      reg8,   reg16
-    // extensions to system instructions
-    {$message 'implement'}
-    (*
-    procedure Instruction_DF_01; virtual; // INTSET     reg8,   imm16
-    procedure Instruction_DF_02; virtual; // INTSET     reg8,   reg16
-    procedure Instruction_DF_03; virtual; // INTSET     imm8,   rel8
-    procedure Instruction_DF_04; virtual; // INTSET     imm8,   rel16
-    procedure Instruction_DF_05; virtual; // INTSET     reg8,   rel8
-    procedure Instruction_DF_06; virtual; // INTSET     reg8,   rel16
-    *)
   end;
 
 implementation

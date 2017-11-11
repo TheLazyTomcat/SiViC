@@ -109,6 +109,8 @@ type
     procedure Instruction_3A; virtual;    // OUT        imm8,   reg16
     procedure Instruction_3B; virtual;    // OUT        reg8,   reg8
     procedure Instruction_3C; virtual;    // OUT        reg8,   reg16
+    procedure Instruction_3D; virtual;    // INTSET     reg8,   imm16
+    procedure Instruction_3E; virtual;    // INTSET     reg8,   reg16
   end;
 
 implementation
@@ -243,6 +245,8 @@ case InstructionByte of
   $3A:  fCurrentInstruction.InstructionHandler := Instruction_3A;   // OUT        imm8,   reg16
   $3B:  fCurrentInstruction.InstructionHandler := Instruction_3B;   // OUT        reg8,   reg8
   $3C:  fCurrentInstruction.InstructionHandler := Instruction_3C;   // OUT        reg8,   reg16
+  $3D:  fCurrentInstruction.InstructionHandler := Instruction_3D;   // INTSET     reg8,   imm16
+  $3E:  fCurrentInstruction.InstructionHandler := Instruction_3E;   // INTSET     reg8,   reg16
 else
   inherited InstructionSelect_L1(InstructionByte);
 end;
@@ -863,6 +867,22 @@ If DeviceConnected(GetArgVal(0)) then
     PortUpdated(TSVCPortIndex(GetArgVal(0)));
   end
 else raise ESVCInterruptException.Create(SVC_EXCEPTION_DEVICENOTAVAILABLE,GetArgVal(0));
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCProcessor_Base.Instruction_3D;   // INTSET     reg8,   imm16
+begin
+ArgumentsDecode(False,[iatREG8,iatIMM16]);
+fInterruptHandlers[TSVCInterruptIndex(GetArgVal(0))].HandlerAddr := GetArgVal(1);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCProcessor_Base.Instruction_3E;   // INTSET     reg8,   reg16
+begin
+ArgumentsDecode(False,[iatREG8,iatREG16]);
+fInterruptHandlers[TSVCInterruptIndex(GetArgVal(0))].HandlerAddr := GetArgVal(1);
 end;
 
 end.
