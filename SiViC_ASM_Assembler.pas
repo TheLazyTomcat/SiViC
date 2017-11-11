@@ -162,6 +162,7 @@ type
     Function AddWarningMessage(const Text: String; Values: array of const): Integer; overload; virtual;
     Function AddWarningMessage(const Text: String): Integer; overload; virtual;
     procedure LoadDefaultSystemValues; virtual;
+    procedure LoadPredefinedConstants; virtual;
     procedure SortMessages; virtual;
     procedure CountMessages; virtual;
     procedure FinalizeVariables; virtual;
@@ -572,6 +573,23 @@ var
 begin
 For i := Low(SVC_PROGRAM_DEFAULTSYSVALS) to High(SVC_PROGRAM_DEFAULTSYSVALS) do
   AddDefaultSys(SVC_PROGRAM_DEFAULTSYSVALS[i].Identifier,SVC_PROGRAM_DEFAULTSYSVALS[i].Value);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCAssembler.LoadPredefinedConstants;
+var
+  i:    Integer;
+  Temp: TSVCAssemblerItem_Const;
+begin
+Temp.Size := vsNative;
+Temp.SrcLineIdx := -1;
+For i := 0 to Pred(fLists.PredefinedConstantCount) do
+  begin
+    Temp.Identifier := fLists.PredefinedConstants[i].Identifier;
+    Temp.Value := fLists.PredefinedConstants[i].Value;
+    AddConst(Temp);
+  end;
 end;
 
 //------------------------------------------------------------------------------
@@ -1047,6 +1065,7 @@ fParsedLineIdx := -1;
 fCodeSize := 0;
 fMemTaken := 0;
 LoadDefaultSystemValues;
+LoadPredefinedConstants;
 end;
 
 //------------------------------------------------------------------------------

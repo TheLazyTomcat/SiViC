@@ -36,6 +36,8 @@ const
   SVC_ASM_LISTS_CHAR_INS_SFX_DELIMITER    = ',';
   SVC_ASM_LISTS_CHAR_INS_ARG_DELIMITER    = ',';
 
+  SVC_ASM_LISTS_CHAR_PDC_DELIMITER        = '|';
+
   SVC_ASM_LISTS_DEFAULTRESOURCENAME = 'ListsData';
 
 type
@@ -102,6 +104,18 @@ type
     Count:  Integer;
   end;
 
+  // predefined constants list
+  TSVCListsPredConstsListItem = record
+    Identifier:   String;
+    Value:        TSVCNative;
+    Description:  String;
+  end;
+
+  TSVCListsPredConstsList = record
+    List:   array of TSVCListsPredConstsListItem;
+    Count:  Integer;
+  end;
+
   TSVCListManager = class(TObject)
   private
     fConditionCodeList: TSVCListsConditionCodeList;
@@ -109,6 +123,7 @@ type
     fPrefixList:        TSVCListsPrefixList;
     fRegisterList:      TSVCListsRegisterList;
     fInstructionList:   TSVCListsInstructionList;
+    fPredefConsts:      TSVCListsPredConstsList;
     // variables for instruction line parsing
     fILP_Line:          TStringList;
     fILP_Mnem:          TStringList;
@@ -118,6 +133,7 @@ type
     Function GetPrefix(Index: Integer): TSVCListsPrefixListItem;
     Function GetRegister(Index: Integer): TSVCListsRegisterListItem;
     Function GetInstruction(Index: Integer): TSVCListsInstructionListItem;
+    Function GetPredefConst(Index: Integer): TSVCListsPredConstsListItem;
   protected
     class procedure SeparateItems(const List: String; Items: TStrings; Separator: Char); virtual;
     Function AddConditionCode(const Str: String; Code: TSVCInstructionConditionCode): Integer; virtual;
@@ -125,12 +141,14 @@ type
     Function AddPrefix(Item: TSVCListsPrefixListItem): Integer; virtual;
     Function AddRegister(Item: TSVCListsRegisterListItem): Integer; virtual;
     Function AddInstruction(Item: TSVCListsInstructionListItem): Integer; virtual;
+    Function AddPredefConst(Item: TSVCListsPredConstsListItem): Integer; virtual;
     // block parsing
     Function ParseBlock_0(Strings: TStrings; FromIndex: Integer): Integer; virtual; // condition code groups
     Function ParseBlock_1(Strings: TStrings; FromIndex: Integer): Integer; virtual; // prefixes
     Function ParseBlock_2(Strings: TStrings; FromIndex: Integer): Integer; virtual; // registers
     Function ParseBlock_3(Strings: TStrings; FromIndex: Integer): Integer; virtual; // instructions
     procedure ParseBlock_3_Line(const LineStr: String); virtual;
+    Function ParseBlock_4(Strings: TStrings; FromIndex: Integer): Integer; virtual; // predefined constants
   public
     class Function IsReservedWord(const Str: String): Boolean; virtual;
     Function IndexOfConditionCode(const Str: String): Integer; overload; virtual;
@@ -142,6 +160,7 @@ type
     Function IndexOfImplicitRegister(RegIdx: TSVCRegisterIndex): Integer; virtual;
     Function IndexOfInstruction(const Mnemonic: String; StartFrom: Integer = 0): Integer; overload; virtual;
     Function IndexOfInstruction(OpCode: array of TSVCByte; StartFrom: Integer = 0): Integer; overload; virtual;
+    Function IndexOfPredefinedConstant(const Identifier: String): Integer; virtual;
     procedure LoadFromStrings(Strings: TStrings); virtual;
     procedure LoadFromStream(Stream: TStream); virtual;
     procedure LoadFromFile(const FileName: String); virtual;
@@ -151,18 +170,21 @@ type
     procedure ClearPrefixes; virtual;
     procedure ClearRegisters; virtual;
     procedure ClearInstructions; virtual;
+    procedure ClearPredefinedConstants; virtual;
     procedure Clear; virtual;
     property ConditionCodes[Index: Integer]: TSVCListsConditionCodeListItem read GetConditionCode;
     property ConditionCodeGroups[Index: Integer]: TSVCListsCondCodeGroupListItem read GetCondCodeGroup;
     property Prefixes[Index: Integer]: TSVCListsPrefixListItem read GetPrefix;
     property Registers[Index: Integer]: TSVCListsRegisterListItem read GetRegister;
     property Instructions[Index: Integer]: TSVCListsInstructionListItem read GetInstruction;
+    property PredefinedConstants[Index: Integer]: TSVCListsPredConstsListItem read GetPredefConst;
   published
     property ConditionCodeCount: Integer read fConditionCodeList.Count;
     property ConditionCodeGroupCount: Integer read fCondCodeGroupList.Count;
     property PrefixCount: Integer read fPrefixList.Count;
     property RegisterCount: Integer read fRegisterList.Count;
     property InstructionCount: Integer read fInstructionList.Count;
+    property PredefinedConstantCount: Integer read fPredefConsts.Count;
   end;
 
 implementation
@@ -219,6 +241,16 @@ If (Index >= Low(fInstructionList.List)) and (Index < fInstructionList.Count) th
   Result := fInstructionList.List[Index]
 else
   raise Exception.CreateFmt('TSVCListManager.GetInstruction: Index (%d) out of bounds.',[Index]);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TSVCListManager.GetPredefConst(Index: Integer): TSVCListsPredConstsListItem;
+begin
+If (Index >= Low(fPredefConsts.List)) and (Index < fPredefConsts.Count) then
+  Result := fPredefConsts.List[Index]
+else
+  raise Exception.CreateFmt('TSVCListManager.GetPredefConst: Index (%d) out of bounds.',[Index]);
 end;
 
 //==============================================================================
@@ -319,6 +351,17 @@ If Length(Item.Mnemonic) > 1 then
 fInstructionList.List[fInstructionList.Count] := Item;
 Result := fInstructionList.Count;
 Inc(fInstructionList.Count);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TSVCListManager.AddPredefConst(Item: TSVCListsPredConstsListItem): Integer;
+begin
+If fPredefConsts.Count >= Length(fPredefConsts.List) then
+  SetLength(fPredefConsts.List,Length(fPredefConsts.List) + 16);
+fPredefConsts.List[fPredefConsts.Count] := Item;
+Result := fPredefConsts.Count;
+Inc(fPredefConsts.Count);
 end;
 
 //------------------------------------------------------------------------------
@@ -661,6 +704,47 @@ If fILP_Line.Count >= 5 then
   end;
 end;
 
+//------------------------------------------------------------------------------
+
+Function TSVCListManager.ParseBlock_4(Strings: TStrings; FromIndex: Integer): Integer;
+var
+  Line: TStringList;
+  Temp: TSVCListsPredConstsListItem;
+begin
+Line := TStringList.Create;
+try
+  Result := FromIndex;
+  while Result <= Strings.Count do
+    begin
+      If Length(Strings[Result]) > 0 then
+        case Strings[Result][1] of
+          SVC_ASM_LISTS_CHAR_COMMENT:;
+            // do nothing, ignore the line
+          SVC_ASM_LISTS_CHAR_BLOCKSTART:
+            raise Exception.CreateFmt('TSVCListManager.ParseBlock_4: ' +
+                  'Nested blocks not allowed (line %d).',[Result]);
+          SVC_ASM_LISTS_CHAR_BLOCKEND:
+            begin
+              Result := Succ(Result);
+              Break{while...};
+            end;
+        else {case-else}
+          SeparateItems(Strings[Result],Line,SVC_ASM_LISTS_CHAR_PDC_DELIMITER);
+          If Line.Count >= 3 then
+            begin
+              Temp.Identifier := Line[0];
+              Temp.Value := TSVCNative(StrToIntDef(Line[1],0));
+              Temp.Description := Line[2];
+              AddPredefConst(Temp);
+            end;
+        end;
+      Inc(Result);
+    end;
+finally
+  Line.Free;
+end;
+end;
+
 //==============================================================================
 
 class Function TSVCListManager.IsReservedWord(const Str: String): Boolean;
@@ -822,6 +906,21 @@ end;
 
 //------------------------------------------------------------------------------
 
+Function TSVCListManager.IndexOfPredefinedConstant(const Identifier: String): Integer;
+var
+  i:  Integer;
+begin
+Result := -1;
+For i := Low(fPredefConsts.List) to Pred(fPredefConsts.Count) do
+  If AnsiSameText(fPredefConsts.List[i].Identifier,Identifier) then
+    begin
+      Result := i;
+      Break{For i};
+    end;
+end;
+
+//------------------------------------------------------------------------------
+
 procedure TSVCListManager.LoadFromStrings(Strings: TStrings);
 var
   i:          Integer;
@@ -839,6 +938,7 @@ while i < Strings.Count do
             1:  i := ParseBlock_1(Strings,Succ(i));
             2:  i := ParseBlock_2(Strings,Succ(i));
             3:  i := ParseBlock_3(Strings,Succ(i));
+            4:  i := ParseBlock_4(Strings,Succ(i));
           else
             raise Exception.CreateFmt('TSVCListManager.LoadFromStrings: Unknown block type (%d).',[BlockType]);
           end;
@@ -939,6 +1039,14 @@ end;
 
 //------------------------------------------------------------------------------
 
+procedure TSVCListManager.ClearPredefinedConstants;
+begin
+fPredefConsts.Count := 0;
+SetLength(fPredefConsts.List,0);
+end;
+
+//------------------------------------------------------------------------------
+
 procedure TSVCListManager.Clear;
 begin
 ClearConditionCodeGroups;
@@ -946,6 +1054,7 @@ ClearConditionCodes;
 ClearPrefixes;
 ClearRegisters;
 ClearInstructions;
+ClearPredefinedConstants;
 end;
 
 end.

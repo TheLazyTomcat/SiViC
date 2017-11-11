@@ -115,6 +115,8 @@ type
     procedure InstructionDecode(SelectMethod: TSVCInstructionSelectMethod; InstructionLength: Integer); overload; virtual;
     procedure InstructionSelect_L1({%H-}InstructionByte: TSVCByte); virtual;
   public
+    class Function GetArchitecture: TSVCProcessorInfoData; virtual;
+    class Function GetRevision: TSVCProcessorInfoData; virtual;
     constructor Create;
     destructor Destroy; override;
     procedure Initialize(MemorySize, NVMemorySize: TMemSize); overload; virtual;
@@ -951,6 +953,20 @@ else raise ESVCInterruptException.Create(SVC_EXCEPTION_INVALIDINSTRUCTION);
 end;
 
 //==============================================================================
+
+class Function TSVCProcessor.GetArchitecture: TSVCProcessorInfoData;
+begin
+Result := $57C0;  // don't ask
+end;
+
+//------------------------------------------------------------------------------
+
+class Function TSVCProcessor.GetRevision: TSVCProcessorInfoData;
+begin
+raise Exception.Create('TSVCProcessor.GetRevision: No revision number available');
+end;
+
+//------------------------------------------------------------------------------
 
 constructor TSVCProcessor.Create;
 begin

@@ -125,7 +125,8 @@ Function TSVCProcessor_Base.GetInfoPage(Page: TSVCProcessorInfoPage; Param: TSVC
 begin
 case Page of
   // CPU info
-  SVC_PCS_INFOPAGE_CPU_ARCHITECTURE:  Result := TSVCProcessorInfoData($57C0);
+  SVC_PCS_INFOPAGE_CPU_ARCHITECTURE:  Result := GetArchitecture;
+  SVC_PCS_INFOPAGE_CPU_REVISION:      Result := GetRevision;
   // memory info
   SVC_PCS_INFOPAGE_MEM_SIZE_W0:       Result := TSVCProcessorInfoData(fMemory.Size);
   SVC_PCS_INFOPAGE_MEM_SIZE_W1:       Result := TSVCProcessorInfoData(fMemory.Size shr 16);

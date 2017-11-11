@@ -10,15 +10,9 @@ uses
   SiViC_Processor,
   SiViC_Processor_Base;
 
-const
-  // CPU info
-  SVC_PCS_INFOPAGE_CPU_REVISION = $0002;
-
 type
   TSVCProcessor_0000 = class(TSVCProcessor_Base)
   protected
-    // processor info engine
-    Function GetInfoPage(Page: TSVCProcessorInfoPage; Param: TSVCProcessorInfoData): TSVCProcessorInfoData; override;
     // instruction decoding
     procedure PrefixSelect(Prefix: TSVCInstructionPrefix); override;
     procedure InstructionSelect_L1(InstructionByte: TSVCByte); override;
@@ -520,6 +514,8 @@ type
     procedure Instruction_D2_14; virtual; // OUTSW      imm8,   reg16
     procedure Instruction_D2_15; virtual; // OUTSB      reg8,   reg16
     procedure Instruction_D2_16; virtual; // OUTSW      reg8,   reg16
+  public
+    class Function GetRevision: TSVCProcessorInfoData; override;
   end;
 
 implementation
@@ -529,18 +525,6 @@ uses
   SiViC_Registers,
   SiViC_Interrupts,
   SiViC_IO;
-
-Function TSVCProcessor_0000.GetInfoPage(Page: TSVCProcessorInfoPage; Param: TSVCProcessorInfoData): TSVCProcessorInfoData;
-begin
-case Page of
-  // CPU info
-  SVC_PCS_INFOPAGE_CPU_REVISION:  Result := TSVCProcessorInfoData($0000);
-else
-  Result := inherited GetInfoPage(Page,Param);
-end;
-end;
-
-//==============================================================================
 
 procedure TSVCProcessor_0000.PrefixSelect(Prefix: TSVCInstructionPrefix);
 begin
@@ -6729,6 +6713,13 @@ If RepeatPrefixActive then
 else InstructionCycle;
 If MemAccessed then
   DoMemoryReadEvent(MemAddr);
+end;
+
+//------------------------------------------------------------------------------
+
+class Function TSVCProcessor_0000.GetRevision: TSVCProcessorInfoData;
+begin
+Result := 0;
 end;
 
 end.
