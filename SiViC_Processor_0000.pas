@@ -5547,6 +5547,9 @@ end;
 //==============================================================================
 
 procedure TSVCProcessor_0000.Instruction_D2_01;   // LODSB      reg8,   reg16
+var
+  MemAccessed:  Boolean;
+  MemAddr:      TSVCNative;
 
   procedure InstructionCycle;
   begin
@@ -5563,6 +5566,8 @@ procedure TSVCProcessor_0000.Instruction_D2_01;   // LODSB      reg8,   reg16
 
 begin
 ArgumentsDecode(False,[iatREG8,iatREG16]);
+MemAccessed := False;
+MemAddr := GetArgVal(1);
 If RepeatPrefixActive then
   while fRegisters.CNTR > 0 do begin
     InstructionCycle;
@@ -5570,15 +5575,20 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
-DoMemoryReadEvent(GetArgVal(1));
+If MemAccessed then
+  DoMemoryReadEvent(MemAddr);
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TSVCProcessor_0000.Instruction_D2_02;   // LODSW      reg16,  reg16
+var
+  MemAccessed:  Boolean;
+  MemAddr:      TSVCNative;
 
   procedure InstructionCycle;
   begin
+    MemAccessed := True;
     If fMemory.IsValidArea(GetArgVal(1),SVC_SZ_WORD) then
       begin
         TSVCWord(GetArgPtr(0)^) := TSVCWord(fMemory.AddrPtr(GetArgVal(1))^);
@@ -5592,6 +5602,8 @@ procedure TSVCProcessor_0000.Instruction_D2_02;   // LODSW      reg16,  reg16
 
 begin
 ArgumentsDecode(False,[iatREG16,iatREG16]);
+MemAccessed := False;
+MemAddr := GetArgVal(1);
 If RepeatPrefixActive then
   while fRegisters.CNTR > 0 do begin
     InstructionCycle;
@@ -5599,17 +5611,21 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
-DoMemoryReadEvent(GetArgVal(1));
+If MemAccessed then
+  DoMemoryReadEvent(MemAddr);
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TSVCProcessor_0000.Instruction_D2_03;   // STOSB      reg16,  reg8
 var
-  LowAddr:  TSVCComp;
+  MemAccessed:  Boolean;
+  MemAddr:      TSVCNative;
+  LowAddr:      TSVCComp;
 
   procedure InstructionCycle;
   begin
+    MemAccessed := True;
     If fMemory.IsValidArea(GetArgVal(0),SVC_SZ_BYTE) then
       begin
         TSVCByte(fMemory.AddrPtr(GetArgVal(0))^) := TSVCByte(GetArgVal(1));
@@ -5623,6 +5639,8 @@ var
 
 begin
 ArgumentsDecode(False,[iatREG16,iatREG8]);
+MemAccessed := False;
+MemAddr := GetArgVal(0);
 If RepeatPrefixActive then
   begin
     If GetCRFlag(SVC_REG_CR_FASTSTRING) and (fRegisters.CNTR > 1) then
@@ -5633,6 +5651,7 @@ If RepeatPrefixActive then
           LowAddr := GetArgVal(0);
         If (LowAddr >= 0) and fMemory.IsValidArea(TSVCNative(LowAddr),TSVCNative(TSVCComp(fRegisters.CNTR) * SVC_SZ_BYTE)) then
           begin
+            MemAccessed := True;
             FillChar(fMemory.AddrPtr(TSVCNative(LowAddr))^,TSVCComp(fRegisters.CNTR) * SVC_SZ_BYTE,TSVCByte(GetArgVal(1)));
             If GetFlag(SVC_REG_FLAGS_DIRECTION) then
               TSVCNative(GetArgPtr(0)^) := TSVCNative(LowAddr - SVC_SZ_BYTE)
@@ -5650,17 +5669,21 @@ If RepeatPrefixActive then
       end;
   end
 else InstructionCycle;
-DoMemoryWriteEvent(GetArgVal(0));
+If MemAccessed then
+  DoMemoryWriteEvent(MemAddr);
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TSVCProcessor_0000.Instruction_D2_04;   // STOSW      reg16,  reg16
 var
-  LowAddr:  TSVCComp;
+  MemAccessed:  Boolean;
+  MemAddr:      TSVCNative;
+  LowAddr:      TSVCComp;
 
   procedure InstructionCycle;
   begin
+    MemAccessed := True;
     If fMemory.IsValidArea(GetArgVal(0),SVC_SZ_WORD) then
       begin
         TSVCWord(fMemory.AddrPtr(GetArgVal(0))^) := TSVCWord(GetArgVal(1));
@@ -5674,6 +5697,8 @@ var
 
 begin
 ArgumentsDecode(False,[iatREG16,iatREG16]);
+MemAccessed := False;
+MemAddr := GetArgVal(0);
 If RepeatPrefixActive then
   begin
     If GetCRFlag(SVC_REG_CR_FASTSTRING) and (fRegisters.CNTR > 1) and (TSVCByte(GetArgVal(1)) = TSVCByte(GetArgVal(1) shr 8)) then
@@ -5684,6 +5709,7 @@ If RepeatPrefixActive then
           LowAddr := GetArgVal(0);
         If (LowAddr >= 0) and fMemory.IsValidArea(TSVCNative(LowAddr),TSVCNative(TSVCComp(fRegisters.CNTR) * SVC_SZ_WORD)) then
           begin
+            MemAccessed := True;
             FillChar(fMemory.AddrPtr(TSVCNative(LowAddr))^,TSVCComp(fRegisters.CNTR) * SVC_SZ_WORD,TSVCByte(GetArgVal(1)));
             If GetFlag(SVC_REG_FLAGS_DIRECTION) then
               TSVCNative(GetArgPtr(0)^) := TSVCNative(LowAddr - SVC_SZ_WORD)
@@ -5701,18 +5727,23 @@ If RepeatPrefixActive then
       end;
   end
 else InstructionCycle;
-DoMemoryWriteEvent(GetArgVal(0));
+If MemAccessed then
+  DoMemoryWriteEvent(MemAddr);
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TSVCProcessor_0000.Instruction_D2_05;   // MOVSB      reg16,  reg16
 var
-  SrcLowAddr: TSVCComp;
-  DstLowAddr: TSVCComp;
+  MemAccessed:  Boolean;
+  SrcMemAddr:   TSVCNative;
+  DstMemAddr:   TSVCNative;
+  SrcLowAddr:   TSVCComp;
+  DstLowAddr:   TSVCComp;
 
   procedure InstructionCycle;
   begin
+    MemAccessed := True;
     If fMemory.IsValidArea(GetArgVal(0),SVC_SZ_BYTE) then
       begin
         If fMemory.IsValidArea(GetArgVal(1),SVC_SZ_BYTE) then
@@ -5736,6 +5767,9 @@ var
 
 begin
 ArgumentsDecode(False,[iatREG16,iatREG16]);
+MemAccessed := False;
+SrcMemAddr := GetArgVal(1);
+DstMemAddr := GetArgVal(0);
 If RepeatPrefixActive then
   begin
     If GetCRFlag(SVC_REG_CR_FASTSTRING) and (fRegisters.CNTR > 1) then
@@ -5754,6 +5788,7 @@ If RepeatPrefixActive then
           begin
             If (DstLowAddr >= 0) and fMemory.IsValidArea(TSVCNative(DstLowAddr),TSVCNative(TSVCComp(fRegisters.CNTR) * SVC_SZ_BYTE)) then
               begin
+                MemAccessed := True;
                 Move(fMemory.AddrPtr(SrcLowAddr)^,fMemory.AddrPtr(DstLowAddr)^,TSVCComp(fRegisters.CNTR) * SVC_SZ_BYTE);
                 If GetFlag(SVC_REG_FLAGS_DIRECTION) then
                   begin
@@ -5779,19 +5814,26 @@ If RepeatPrefixActive then
       end;
   end
 else InstructionCycle;
-DoMemoryReadEvent(GetArgVal(1));
-DoMemoryWriteEvent(GetArgVal(0));
+If MemAccessed then
+  begin
+    DoMemoryReadEvent(SrcMemAddr);
+    DoMemoryWriteEvent(DstMemAddr);
+  end;
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TSVCProcessor_0000.Instruction_D2_06;   // MOVSW      reg16,  reg16
 var
-  SrcLowAddr: TSVCComp;
-  DstLowAddr: TSVCComp;
+  MemAccessed:  Boolean;
+  SrcMemAddr:   TSVCNative;
+  DstMemAddr:   TSVCNative;
+  SrcLowAddr:   TSVCComp;
+  DstLowAddr:   TSVCComp;
 
   procedure InstructionCycle;
   begin
+    MemAccessed := True;
     If fMemory.IsValidArea(GetArgVal(0),SVC_SZ_WORD) then
       begin
         If fMemory.IsValidArea(GetArgVal(1),SVC_SZ_WORD) then
@@ -5815,6 +5857,9 @@ var
 
 begin
 ArgumentsDecode(False,[iatREG16,iatREG16]);
+MemAccessed := False;
+SrcMemAddr := GetArgVal(1);
+DstMemAddr := GetArgVal(0);
 If RepeatPrefixActive then
   begin
     If GetCRFlag(SVC_REG_CR_FASTSTRING) and (fRegisters.CNTR > 1) then
@@ -5833,6 +5878,7 @@ If RepeatPrefixActive then
           begin
             If (DstLowAddr >= 0) and fMemory.IsValidArea(TSVCNative(DstLowAddr),TSVCNative(TSVCComp(fRegisters.CNTR) * SVC_SZ_WORD)) then
               begin
+                MemAccessed := True;
                 Move(fMemory.AddrPtr(SrcLowAddr)^,fMemory.AddrPtr(DstLowAddr)^,TSVCComp(fRegisters.CNTR) * SVC_SZ_WORD);
                 If GetFlag(SVC_REG_FLAGS_DIRECTION) then
                   begin
@@ -5858,19 +5904,26 @@ If RepeatPrefixActive then
       end;
   end
 else InstructionCycle;
-DoMemoryReadEvent(GetArgVal(1));
-DoMemoryWriteEvent(GetArgVal(0));
+If MemAccessed then
+  begin
+    DoMemoryReadEvent(SrcMemAddr);
+    DoMemoryWriteEvent(DstMemAddr);
+  end;
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TSVCProcessor_0000.Instruction_D2_07;   // LOADSB     reg16,  reg16
 var
-  SrcLowAddr: TSVCComp; // vn-mem
-  DstLowAddr: TSVCComp; // ram
+  MemAccessed:  Boolean;
+  SrcMemAddr:   TSVCNative;
+  DstMemAddr:   TSVCNative;
+  SrcLowAddr:   TSVCComp; // vn-mem
+  DstLowAddr:   TSVCComp; // ram
 
   procedure InstructionCycle;
   begin
+    MemAccessed := True;
     If fMemory.IsValidArea(GetArgVal(0),SVC_SZ_BYTE) then
       begin
         If fNVMemory.IsValidArea(GetArgVal(1),SVC_SZ_BYTE) then
@@ -5894,6 +5947,9 @@ var
 
 begin
 ArgumentsDecode(False,[iatREG16,iatREG16]);
+MemAccessed := False;
+SrcMemAddr := GetArgVal(1);
+DstMemAddr := GetArgVal(0);
 If RepeatPrefixActive then
   begin
     If GetCRFlag(SVC_REG_CR_FASTSTRING) and (fRegisters.CNTR > 1) then
@@ -5912,6 +5968,7 @@ If RepeatPrefixActive then
           begin
             If (DstLowAddr >= 0) and fMemory.IsValidArea(TSVCNative(DstLowAddr),TSVCNative(TSVCComp(fRegisters.CNTR) * SVC_SZ_BYTE)) then
               begin
+                MemAccessed := True;
                 Move(fNVMemory.AddrPtr(SrcLowAddr)^,fMemory.AddrPtr(DstLowAddr)^,TSVCComp(fRegisters.CNTR) * SVC_SZ_BYTE);
                 If GetFlag(SVC_REG_FLAGS_DIRECTION) then
                   begin
@@ -5937,19 +5994,26 @@ If RepeatPrefixActive then
       end;
   end
 else InstructionCycle;
-DoNVMemoryReadEvent(GetArgVal(1));
-DoMemoryWriteEvent(GetArgVal(0));
+If MemAccessed then
+  begin
+    DoNVMemoryReadEvent(SrcMemAddr);
+    DoMemoryWriteEvent(DstMemAddr);
+  end;
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TSVCProcessor_0000.Instruction_D2_08;   // LOADSW     reg16,  reg16
 var
-  SrcLowAddr: TSVCComp; // vn-mem
-  DstLowAddr: TSVCComp; // ram
+  MemAccessed:  Boolean;
+  SrcMemAddr:   TSVCNative;
+  DstMemAddr:   TSVCNative;
+  SrcLowAddr:   TSVCComp; // vn-mem
+  DstLowAddr:   TSVCComp; // ram
 
   procedure InstructionCycle;
   begin
+    MemAccessed := True;
     If fMemory.IsValidArea(GetArgVal(0),SVC_SZ_WORD) then
       begin
         If fNVMemory.IsValidArea(GetArgVal(1),SVC_SZ_WORD) then
@@ -5973,6 +6037,9 @@ var
 
 begin
 ArgumentsDecode(False,[iatREG16,iatREG16]);
+MemAccessed := False;
+SrcMemAddr := GetArgVal(1);
+DstMemAddr := GetArgVal(0);
 If RepeatPrefixActive then
   begin
     If GetCRFlag(SVC_REG_CR_FASTSTRING) and (fRegisters.CNTR > 1) then
@@ -5991,6 +6058,7 @@ If RepeatPrefixActive then
           begin
             If (DstLowAddr >= 0) and fMemory.IsValidArea(TSVCNative(DstLowAddr),TSVCNative(TSVCComp(fRegisters.CNTR) * SVC_SZ_WORD)) then
               begin
+                MemAccessed := True;
                 Move(fNVMemory.AddrPtr(SrcLowAddr)^,fMemory.AddrPtr(DstLowAddr)^,TSVCComp(fRegisters.CNTR) * SVC_SZ_WORD);
                 If GetFlag(SVC_REG_FLAGS_DIRECTION) then
                   begin
@@ -6016,19 +6084,26 @@ If RepeatPrefixActive then
       end;
   end
 else InstructionCycle;
-DoNVMemoryReadEvent(GetArgVal(1));
-DoMemoryWriteEvent(GetArgVal(0));
+If MemAccessed then
+  begin
+    DoNVMemoryReadEvent(SrcMemAddr);
+    DoMemoryWriteEvent(DstMemAddr);
+  end;
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TSVCProcessor_0000.Instruction_D2_09;   // STORESB    reg16,  reg16
 var
-  SrcLowAddr: TSVCComp; // ram
-  DstLowAddr: TSVCComp; // nv-mem
+  MemAccessed:  Boolean;
+  SrcMemAddr:   TSVCNative;
+  DstMemAddr:   TSVCNative;
+  SrcLowAddr:   TSVCComp; // ram
+  DstLowAddr:   TSVCComp; // nv-mem
 
   procedure InstructionCycle;
   begin
+    MemAccessed := True;
     If fNVMemory.IsValidArea(GetArgVal(0),SVC_SZ_BYTE) then
       begin
         If fMemory.IsValidArea(GetArgVal(1),SVC_SZ_BYTE) then
@@ -6052,6 +6127,9 @@ var
 
 begin
 ArgumentsDecode(False,[iatREG16,iatREG16]);
+MemAccessed := False;
+SrcMemAddr := GetArgVal(1);
+DstMemAddr := GetArgVal(0);
 If RepeatPrefixActive then
   begin
     If GetCRFlag(SVC_REG_CR_FASTSTRING) and (fRegisters.CNTR > 1) then
@@ -6070,6 +6148,7 @@ If RepeatPrefixActive then
           begin
             If (DstLowAddr >= 0) and fNVMemory.IsValidArea(TSVCNative(DstLowAddr),TSVCNative(TSVCComp(fRegisters.CNTR) * SVC_SZ_BYTE)) then
               begin
+                MemAccessed := True;
                 Move(fMemory.AddrPtr(SrcLowAddr)^,fNVMemory.AddrPtr(DstLowAddr)^,TSVCComp(fRegisters.CNTR) * SVC_SZ_BYTE);
                 If GetFlag(SVC_REG_FLAGS_DIRECTION) then
                   begin
@@ -6095,19 +6174,26 @@ If RepeatPrefixActive then
       end;
   end
 else InstructionCycle;
-DoMemoryReadEvent(GetArgVal(1));
-DoNVMemoryWriteEvent(GetArgVal(0));
+If MemAccessed then
+  begin
+    DoMemoryReadEvent(SrcMemAddr);
+    DoNVMemoryWriteEvent(DstMemAddr);
+  end;
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TSVCProcessor_0000.Instruction_D2_0A;   // STORESW    reg16,  reg16
 var
-  SrcLowAddr: TSVCComp; // ram
-  DstLowAddr: TSVCComp; // nv-mem
+  MemAccessed:  Boolean;
+  SrcMemAddr:   TSVCNative;
+  DstMemAddr:   TSVCNative;
+  SrcLowAddr:   TSVCComp; // ram
+  DstLowAddr:   TSVCComp; // nv-mem
 
   procedure InstructionCycle;
   begin
+    MemAccessed := True;
     If fNVMemory.IsValidArea(GetArgVal(0),SVC_SZ_WORD) then
       begin
         If fMemory.IsValidArea(GetArgVal(1),SVC_SZ_WORD) then
@@ -6131,6 +6217,9 @@ var
 
 begin
 ArgumentsDecode(False,[iatREG16,iatREG16]);
+MemAccessed := False;
+SrcMemAddr := GetArgVal(1);
+DstMemAddr := GetArgVal(0);
 If RepeatPrefixActive then
   begin
     If GetCRFlag(SVC_REG_CR_FASTSTRING) and (fRegisters.CNTR > 1) then
@@ -6149,6 +6238,7 @@ If RepeatPrefixActive then
           begin
             If (DstLowAddr >= 0) and fNVMemory.IsValidArea(TSVCNative(DstLowAddr),TSVCNative(TSVCComp(fRegisters.CNTR) * SVC_SZ_WORD)) then
               begin
+                MemAccessed := True;
                 Move(fMemory.AddrPtr(SrcLowAddr)^,fNVMemory.AddrPtr(DstLowAddr)^,TSVCComp(fRegisters.CNTR) * SVC_SZ_BYTE);
                 If GetFlag(SVC_REG_FLAGS_DIRECTION) then
                   begin
@@ -6174,16 +6264,24 @@ If RepeatPrefixActive then
       end;
   end
 else InstructionCycle;
-DoMemoryReadEvent(GetArgVal(1));
-DoNVMemoryWriteEvent(GetArgVal(0));
+If MemAccessed then
+  begin
+    DoMemoryReadEvent(SrcMemAddr);
+    DoNVMemoryWriteEvent(DstMemAddr);
+  end;
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TSVCProcessor_0000.Instruction_D2_0B;   // CMPSB      reg16,  reg16
+var
+  MemAccessed:  Boolean;
+  MemAddr1:     TSVCNative;
+  MemAddr2:     TSVCNative;
 
   procedure InstructionCycle;
   begin
+    MemAccessed := True;
     If fMemory.IsValidArea(GetArgVal(0),SVC_SZ_BYTE) then
       begin
         If fMemory.IsValidArea(GetArgVal(1),SVC_SZ_BYTE) then
@@ -6207,6 +6305,9 @@ procedure TSVCProcessor_0000.Instruction_D2_0B;   // CMPSB      reg16,  reg16
 
 begin
 ArgumentsDecode(False,[iatREG16,iatREG16]);
+MemAccessed := False;
+MemAddr1 := GetArgVal(1);
+MemAddr2 := GetArgVal(0);
 If RepeatPrefixActive then
   while fRegisters.CNTR > 0 do begin
     InstructionCycle;
@@ -6214,16 +6315,24 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
-DoMemoryReadEvent(GetArgVal(1));
-DoMemoryReadEvent(GetArgVal(0));
+If MemAccessed then
+  begin
+    DoMemoryReadEvent(MemAddr1);
+    DoMemoryReadEvent(MemAddr2);
+  end;
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TSVCProcessor_0000.Instruction_D2_0C;   // CMPSW      reg16,  reg16
+var
+  MemAccessed:  Boolean;
+  MemAddr1:     TSVCNative;
+  MemAddr2:     TSVCNative;
 
   procedure InstructionCycle;
   begin
+    MemAccessed := True;
     If fMemory.IsValidArea(GetArgVal(0),SVC_SZ_WORD) then
       begin
         If fMemory.IsValidArea(GetArgVal(1),SVC_SZ_WORD) then
@@ -6247,6 +6356,9 @@ procedure TSVCProcessor_0000.Instruction_D2_0C;   // CMPSW      reg16,  reg16
 
 begin
 ArgumentsDecode(False,[iatREG16,iatREG16]);
+MemAccessed := False;
+MemAddr1 := GetArgVal(1);
+MemAddr2 := GetArgVal(0);
 If RepeatPrefixActive then
   while fRegisters.CNTR > 0 do begin
     InstructionCycle;
@@ -6254,16 +6366,23 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
-DoMemoryReadEvent(GetArgVal(1));
-DoMemoryReadEvent(GetArgVal(0));
+If MemAccessed then
+  begin
+    DoMemoryReadEvent(MemAddr1);
+    DoMemoryReadEvent(MemAddr2);
+  end;
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TSVCProcessor_0000.Instruction_D2_0D;   // SCASB      reg8,   reg16
+var
+  MemAccessed:  Boolean;
+  MemAddr:      TSVCNative;
 
   procedure InstructionCycle;
   begin
+    MemAccessed := True;
     If fMemory.IsValidArea(GetArgVal(1),SVC_SZ_BYTE) then
       begin
         FlaggedSUB_B(TSVCByte(GetArgVal(0)),TSVCByte(fMemory.AddrPtr(GetArgVal(1))^));
@@ -6277,6 +6396,8 @@ procedure TSVCProcessor_0000.Instruction_D2_0D;   // SCASB      reg8,   reg16
 
 begin
 ArgumentsDecode(False,[iatREG8,iatREG16]);
+MemAccessed := False;
+MemAddr := GetArgVal(1);
 If RepeatPrefixActive then
   while fRegisters.CNTR > 0 do begin
     InstructionCycle;
@@ -6284,15 +6405,20 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
-DoMemoryReadEvent(GetArgVal(1));
+If MemAccessed then
+  DoMemoryReadEvent(MemAddr);
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TSVCProcessor_0000.Instruction_D2_0E;   // SCASW      reg16,  reg16
+var
+  MemAccessed:  Boolean;
+  MemAddr:      TSVCNative;
 
   procedure InstructionCycle;
   begin
+    MemAccessed := True;
     If fMemory.IsValidArea(GetArgVal(1),SVC_SZ_WORD) then
       begin
         FlaggedSUB_W(TSVCWord(GetArgVal(0)),TSVCWord(fMemory.AddrPtr(GetArgVal(1))^));
@@ -6306,6 +6432,8 @@ procedure TSVCProcessor_0000.Instruction_D2_0E;   // SCASW      reg16,  reg16
 
 begin
 ArgumentsDecode(False,[iatREG16,iatREG16]);
+MemAccessed := False;
+MemAddr := GetArgVal(1);
 If RepeatPrefixActive then
   while fRegisters.CNTR > 0 do begin
     InstructionCycle;
@@ -6313,15 +6441,20 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
-DoMemoryReadEvent(GetArgVal(1));
+If MemAccessed then
+  DoMemoryReadEvent(MemAddr);
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TSVCProcessor_0000.Instruction_D2_0F;   // INSB       reg16,  imm8
+var
+  MemAccessed:  Boolean;
+  MemAddr:      TSVCNative;
 
   procedure InstructionCycle;
   begin
+    MemAccessed := True;
     If fMemory.IsValidArea(GetArgVal(0),SVC_SZ_BYTE) then
       begin
         PortRequested(TSVCPortIndex(GetArgVal(1)));
@@ -6336,6 +6469,8 @@ procedure TSVCProcessor_0000.Instruction_D2_0F;   // INSB       reg16,  imm8
 
 begin
 ArgumentsDecode(False,[iatREG16,iatIMM8]);
+MemAccessed := False;
+MemAddr := GetArgVal(0);
 If RepeatPrefixActive then
   while fRegisters.CNTR > 0 do begin
     InstructionCycle;
@@ -6343,15 +6478,20 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
-DoMemoryWriteEvent(GetArgVal(0));
+If MemAccessed then
+  DoMemoryWriteEvent(MemAddr);
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TSVCProcessor_0000.Instruction_D2_10;   // INSW       reg16,  imm8
+var
+  MemAccessed:  Boolean;
+  MemAddr:      TSVCNative;
 
   procedure InstructionCycle;
   begin
+    MemAccessed := True;
     If fMemory.IsValidArea(GetArgVal(0),SVC_SZ_WORD) then
       begin
         PortRequested(TSVCPortIndex(GetArgVal(1)));
@@ -6366,6 +6506,8 @@ procedure TSVCProcessor_0000.Instruction_D2_10;   // INSW       reg16,  imm8
 
 begin
 ArgumentsDecode(False,[iatREG16,iatIMM8]);
+MemAccessed := False;
+MemAddr := GetArgVal(0);
 If RepeatPrefixActive then
   while fRegisters.CNTR > 0 do begin
     InstructionCycle;
@@ -6373,15 +6515,20 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
-DoMemoryWriteEvent(GetArgVal(0));
+If MemAccessed then
+  DoMemoryWriteEvent(MemAddr);
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TSVCProcessor_0000.Instruction_D2_11;   // INSB       reg16,  reg8
+var
+  MemAccessed:  Boolean;
+  MemAddr:      TSVCNative;
 
   procedure InstructionCycle;
   begin
+    MemAccessed := True;
     If fMemory.IsValidArea(GetArgVal(0),SVC_SZ_BYTE) then
       begin
         PortRequested(TSVCPortIndex(GetArgVal(1)));
@@ -6396,6 +6543,8 @@ procedure TSVCProcessor_0000.Instruction_D2_11;   // INSB       reg16,  reg8
 
 begin
 ArgumentsDecode(False,[iatREG16,iatREG8]);
+MemAccessed := False;
+MemAddr := GetArgVal(0);
 If RepeatPrefixActive then
   while fRegisters.CNTR > 0 do begin
     InstructionCycle;
@@ -6403,15 +6552,20 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
-DoMemoryWriteEvent(GetArgVal(0));
+If MemAccessed then
+  DoMemoryWriteEvent(MemAddr);
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TSVCProcessor_0000.Instruction_D2_12;   // INSW       reg16,  reg8
+var
+  MemAccessed:  Boolean;
+  MemAddr:      TSVCNative;
 
   procedure InstructionCycle;
   begin
+    MemAccessed := True;
     If fMemory.IsValidArea(GetArgVal(0),SVC_SZ_WORD) then
       begin
         PortRequested(TSVCPortIndex(GetArgVal(1)));
@@ -6426,6 +6580,8 @@ procedure TSVCProcessor_0000.Instruction_D2_12;   // INSW       reg16,  reg8
 
 begin
 ArgumentsDecode(False,[iatREG16,iatREG8]);
+MemAccessed := False;
+MemAddr := GetArgVal(0);
 If RepeatPrefixActive then
   while fRegisters.CNTR > 0 do begin
     InstructionCycle;
@@ -6433,15 +6589,20 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
-DoMemoryWriteEvent(GetArgVal(0));
+If MemAccessed then
+  DoMemoryWriteEvent(MemAddr);
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TSVCProcessor_0000.Instruction_D2_13;   // OUTSB      imm8,   reg16
+var
+  MemAccessed:  Boolean;
+  MemAddr:      TSVCNative;
 
   procedure InstructionCycle;
   begin
+    MemAccessed := True;
     If fMemory.IsValidArea(GetArgVal(1),SVC_SZ_BYTE) then
       begin
         fPorts[TSVCPortIndex(GetArgVal(0))].Data := TSVCByte(fMemory.AddrPtr(GetArgVal(1))^);
@@ -6456,6 +6617,8 @@ procedure TSVCProcessor_0000.Instruction_D2_13;   // OUTSB      imm8,   reg16
 
 begin
 ArgumentsDecode(False,[iatIMM8,iatREG16]);
+MemAccessed := False;
+MemAddr := GetArgVal(1);
 If RepeatPrefixActive then
   while fRegisters.CNTR > 0 do begin
     InstructionCycle;
@@ -6463,15 +6626,20 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
-DoMemoryReadEvent(GetArgVal(1));
+If MemAccessed then
+  DoMemoryReadEvent(MemAddr);
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TSVCProcessor_0000.Instruction_D2_14;   // OUTSW      imm8,   reg16
+var
+  MemAccessed:  Boolean;
+  MemAddr:      TSVCNative;
 
   procedure InstructionCycle;
   begin
+    MemAccessed := True;
     If fMemory.IsValidArea(GetArgVal(1),SVC_SZ_WORD) then
       begin
         fPorts[TSVCPortIndex(GetArgVal(0))].Data := TSVCWord(fMemory.AddrPtr(GetArgVal(1))^);
@@ -6486,6 +6654,8 @@ procedure TSVCProcessor_0000.Instruction_D2_14;   // OUTSW      imm8,   reg16
 
 begin
 ArgumentsDecode(False,[iatIMM8,iatREG16]);
+MemAccessed := False;
+MemAddr := GetArgVal(1);
 If RepeatPrefixActive then
   while fRegisters.CNTR > 0 do begin
     InstructionCycle;
@@ -6493,15 +6663,20 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
-DoMemoryReadEvent(GetArgVal(1));
+If MemAccessed then
+  DoMemoryReadEvent(MemAddr);
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TSVCProcessor_0000.Instruction_D2_15;   // OUTSB      reg8,   reg16
+var
+  MemAccessed:  Boolean;
+  MemAddr:      TSVCNative;
 
   procedure InstructionCycle;
   begin
+    MemAccessed := True;
     If fMemory.IsValidArea(GetArgVal(1),SVC_SZ_BYTE) then
       begin
         fPorts[TSVCPortIndex(GetArgVal(0))].Data := TSVCByte(fMemory.AddrPtr(GetArgVal(1))^);
@@ -6516,6 +6691,8 @@ procedure TSVCProcessor_0000.Instruction_D2_15;   // OUTSB      reg8,   reg16
 
 begin
 ArgumentsDecode(False,[iatREG8,iatREG16]);
+MemAccessed := False;
+MemAddr := GetArgVal(1);
 If RepeatPrefixActive then
   while fRegisters.CNTR > 0 do begin
     InstructionCycle;
@@ -6523,15 +6700,20 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
-DoMemoryReadEvent(GetArgVal(1));
+If MemAccessed then
+  DoMemoryReadEvent(MemAddr);
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TSVCProcessor_0000.Instruction_D2_16;   // OUTSW      reg8,   reg16
-
+var
+  MemAccessed:  Boolean;
+  MemAddr:      TSVCNative;
+  
   procedure InstructionCycle;
   begin
+    MemAccessed := True;
     If fMemory.IsValidArea(GetArgVal(1),SVC_SZ_WORD) then
       begin
         fPorts[TSVCPortIndex(GetArgVal(0))].Data := TSVCWord(fMemory.AddrPtr(GetArgVal(1))^);
@@ -6546,6 +6728,8 @@ procedure TSVCProcessor_0000.Instruction_D2_16;   // OUTSW      reg8,   reg16
 
 begin
 ArgumentsDecode(False,[iatREG8,iatREG16]);
+MemAccessed := False;
+MemAddr := GetArgVal(1);
 If RepeatPrefixActive then
   while fRegisters.CNTR > 0 do begin
     InstructionCycle;
@@ -6553,7 +6737,8 @@ If RepeatPrefixActive then
       Break{while...};
   end
 else InstructionCycle;
-DoMemoryReadEvent(GetArgVal(1));
+If MemAccessed then
+  DoMemoryReadEvent(MemAddr);
 end;
 
 end.
