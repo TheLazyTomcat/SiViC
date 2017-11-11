@@ -726,10 +726,12 @@ If fSystemValues.Arr[Index].Value >= TSVCComp(High(TSVCNative) + 1) then
   raise ESVCAssemblerError.Create('Stack cannot fit into available memory')
 else
   StackSize := fSystemValues.Arr[Index].Value;
-// check NVmem size
+// check and rectify NVmem size
 Index := CheckedIndexOfSys(SVC_PROGRAM_SYSVALNAME_NVMEMSIZE);
 fParsedLineIdx := fSystemValues.Arr[Index].SrcLineIdx;
-If fSystemValues.Arr[Index].Value >= TSVCComp(High(TSVCNative) + 1) then
+If fSystemValues.Arr[Index].Value <= TSVCComp(High(TSVCNative) + 1) then
+  fSystemValues.Arr[Index].Value := (fSystemValues.Arr[Index].Value + 255) and not TSVCComp($FF)
+else
   raise ESVCAssemblerError.Create('Size of non-volatile memory is out of allowed range');
 // check mem size
 Index := CheckedIndexOfSys(SVC_PROGRAM_SYSVALNAME_MEMSIZE);

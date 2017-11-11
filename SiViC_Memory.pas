@@ -46,7 +46,7 @@ GetMem(fMemory,Size);
 If Size > TMemSize(High(TSVCNative) + 1) then
   fSize := TMemSize(High(TSVCNative) + 1)
 else
-  fSize := Size;
+  fSize := (Size + 255) and not TMemSize($FF);
 FillChar(fMemory^,fSize,0);
 end;
 
