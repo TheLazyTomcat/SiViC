@@ -42,11 +42,11 @@ uses
 constructor TSVCMemory.Create(Size: TMemSize);
 begin
 inherited Create;
-GetMem(fMemory,Size);
 If Size > TMemSize(High(TSVCNative) + 1) then
   fSize := TMemSize(High(TSVCNative) + 1)
 else
   fSize := (Size + 255) and not TMemSize($FF);
+GetMem(fMemory,fSize);
 FillChar(fMemory^,fSize,0);
 end;
 
