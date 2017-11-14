@@ -12,14 +12,22 @@ uses
 type
   TSVCUnparserStage = (usInitial,usPrefix,usOpCode,usSuffix,usArgument,usFinal);
 
+  TSVCUnparserWindowMapItemType = (wmitNone = 0,wmitPrefix,wmitInstruction,wmitSuffix,wmitArgument);
+
+  TSVCUnparserWindowMap = array[0..Pred(SVC_INS_WINDOWLENGTH)] of TSVCUnparserWindowMapItemType;
+
   TSVCUnparserData = record
-    Window:   TSVCInstructionWindow;
-    Line:     String;
-    HexOnly:  Boolean;
-    OpCode:   TSVCByteArray;
-    InstrIdx: Integer;
-    AddrMode: TSVCInstructionAddressingMode;
-    ArgIdx:   Integer;
+    HexOnly:      Boolean;
+    SplitHexLine: Boolean;
+    Window:       TSVCInstructionWindow;
+    WindowMap:    TSVCUnparserWindowMap;
+    WindowMapPos: Integer;
+    Line:         String;
+    HexLine:      String; 
+    OpCode:       TSVCByteArray;
+    InstrIdx:     Integer;
+    AddrMode:     TSVCInstructionAddressingMode;
+    ArgIdx:       Integer;
   end;
 
   TSVCUnparser = class(TObject)
@@ -30,7 +38,8 @@ type
     fStage:         TSVCUnparserStage;
     fUnparserData:  TSVCUnparserData;
   protected
-    procedure AppendToLine(const Str: String; DoSpace: Boolean = True); virtual;
+    procedure AppendToLine(const Str: String; AddSpace: Boolean = True); virtual;
+    procedure AppendToHexLine(Byte: TSVCByte; WindowMapItemType: TSVCUnparserWindowMapItemType; AddSpace: Boolean = True); virtual;
     procedure Unparse_Stage_Initial; virtual;
     procedure Unparse_Stage_Prefix; virtual;
     procedure Unparse_Stage_OpCode; virtual;
@@ -40,10 +49,13 @@ type
   public
     constructor Create(Lists: TSVCListManager = nil);
     destructor Destroy; override;
-    Function Unparse(InstructionWindow: TSVCInstructionWindow; HexOnly: Boolean = False): Integer; overload; virtual;
-    Function Unparse(InstructionData: array of TSVCByte; HexOnly: Boolean = False): Integer; overload; virtual;
+    Function Unparse(InstructionWindow: TSVCInstructionWindow): Integer; overload; virtual;
+    Function Unparse(InstructionData: array of TSVCByte): Integer; overload; virtual;
   published
+    property HexOnly: Boolean read fUnparserData.HexOnly write fUnparserData.HexOnly;
+    property SplitHexLine: Boolean read fUnparserData.SplitHexLine write fUnparserData.SplitHexLine;
     property Line: String read fUnparserData.Line;
+    property HexLine: String read fUnparserData.HexLine;
   end;
 
 implementation
@@ -59,17 +71,34 @@ type
 
 //------------------------------------------------------------------------------
 
-procedure TSVCUnparser.AppendToLine(const Str: String; DoSpace: Boolean = True);
+procedure TSVCUnparser.AppendToLine(const Str: String; AddSpace: Boolean = True);
 begin
-If not fUnparserData.HexOnly then
+If Length(fUnparserData.Line) > 0 then
   begin
-    If Length(fUnparserData.Line) > 0 then
-      begin
-        If DoSpace then fUnparserData.Line := fUnparserData.Line + ' ' + Str
-          else fUnparserData.Line := fUnparserData.Line + Str;
-      end
-    else fUnparserData.Line := Str;
-  end;
+    If AddSpace then fUnparserData.Line := fUnparserData.Line + ' ' + Str
+      else fUnparserData.Line := fUnparserData.Line + Str;
+  end
+else fUnparserData.Line := Str;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCUnparser.AppendToHexLine(Byte: TSVCByte; WindowMapItemType: TSVCUnparserWindowMapItemType; AddSpace: Boolean = True);
+begin
+If (fUnparserData.WindowMapPos >= Low(TSVCUnparserWindowMap)) and (fUnparserData.WindowMapPos <= High(TSVCUnparserWindowMap)) then
+  begin
+    fUnparserData.WindowMap[fUnparserData.WindowMapPos] := WindowMapItemType;
+    Inc(fUnparserData.WindowMapPos);
+  end
+else raise Exception.CreateFmt('TSVCUnparser.AppendToHexLine: Window map position (%d) out of bounds.',[fUnparserData.WindowMapPos]);
+If Length(fUnparserData.HexLine) > 0 then
+  begin
+    If AddSpace and fUnparserData.SplitHexLine then
+      fUnparserData.HexLine := fUnparserData.HexLine + ' ' + Format('%.2x',[Byte])
+    else
+      fUnparserData.HexLine := fUnparserData.HexLine + Format('%.2x',[Byte]);
+  end
+else fUnparserData.HexLine := Format('%.2x',[Byte]);
 end;
 
 //------------------------------------------------------------------------------
@@ -107,13 +136,17 @@ case fUnparserData.Window.Data[fUnparserData.Window.Position] of
         end;
   $E0..
   $FF:  begin // prefix
-          Index := fLists.IndexOfPrefix(TSVCInstructionPrefix(
-            fUnparserData.Window.Data[fUnparserData.Window.Position]));
-          If Index >= 0 then
-            AppendToLine(fLists.Prefixes[Index].Mnemonic)
-          else
-            raise ESVCUnparsingError.Create('Unknown prefix');
-          fStage := usPrefix;  
+          AppendToHexLine(fUnparserData.Window.Data[fUnparserData.Window.Position],wmitPrefix,True);
+          If not fUnparserData.HexOnly then
+            begin
+              Index := fLists.IndexOfPrefix(TSVCInstructionPrefix(
+                fUnparserData.Window.Data[fUnparserData.Window.Position]));
+              If Index >= 0 then
+                AppendToLine(fLists.Prefixes[Index].Mnemonic)
+              else
+                raise ESVCUnparsingError.Create('Unknown prefix');
+            end;
+          fStage := usPrefix;            
         end;
 else
   raise ESVCUnparsingError.CreateFmt('Invalid code (0x.2x) at %d',
@@ -125,6 +158,7 @@ end;
 
 procedure TSVCUnparser.Unparse_Stage_OpCode;
 var
+  i:        Integer;
   CondCode: TSVCInstructionConditionCode;
   Index:    Integer;
 begin
@@ -134,10 +168,15 @@ begin
 fUnparserData.InstrIdx := fLists.IndexOfInstruction(fUnparserData.OpCode);
 If fUnparserData.InstrIdx >= 0 then
   begin
+    // add instruction to hex
+    For i := Low(fUnparserData.OpCode) to High(fUnparserData.OpCode) do
+      AppendToHexLine(fUnparserData.OpCode[i],wmitInstruction,i = Low(fUnparserData.OpCode));
     with fLists.Instructions[fUnparserData.InstrIdx] do
       begin
         If CCSuffix or MemSuffix then
           begin
+            // add suffix to hex
+            AppendToHexLine(fUnparserData.Window.Data[fUnparserData.Window.Position],wmitSuffix,True);
             fUnparserData.AddrMode := ExtractAddressingMode(TSVCInstructionSuffix(
               fUnparserData.Window.Data[fUnparserData.Window.Position]));
             CondCode := ExtractconditionCode(TSVCInstructionSuffix(
@@ -150,23 +189,26 @@ If fUnparserData.InstrIdx >= 0 then
             fStage := usArgument;
             Dec(fUnparserData.Window.Position);
           end;
-        If CCSuffix then
+        If not fUnparserData.HexOnly then
           begin
-            Index := fLists.IndexOfInstruction(fUnparserData.OpCode);
-            while Index >= 0 do
+            If CCSuffix then
               begin
-                If fLists.Instructions[Index].CCCode = CondCode then
-                  Break{while Index...};
-                Index := fLists.IndexOfInstruction(fUnparserData.OpCode,Succ(Index));
-              end;
-            If Index >= 0 then
-              begin
-                AppendToLine(fLists.Instructions[Index].Mnemonic);
-                fUnparserData.InstrIdx := Index;
+                Index := fUnparserData.InstrIdx;
+                while Index >= 0 do
+                  begin
+                    If fLists.Instructions[Index].CCCode = CondCode then
+                      Break{while Index...};
+                    Index := fLists.IndexOfInstruction(fUnparserData.OpCode,Succ(Index));
+                  end;
+                If Index >= 0 then
+                  begin
+                    AppendToLine(fLists.Instructions[Index].Mnemonic);
+                    fUnparserData.InstrIdx := Index;
+                  end
+                else raise ESVCUnparsingError.Create('Unknown instruction');
               end
-            else raise ESVCUnparsingError.Create('Unknown instruction');
-          end
-        else AppendToLine(Mnemonic);
+            else AppendToLine(Mnemonic);
+          end;
         If Length(Arguments) <= 0 then
           fStage := usFinal;
       end;
@@ -177,6 +219,8 @@ end;
 //------------------------------------------------------------------------------
 
 procedure TSVCUnparser.Unparse_Stage_Suffix;
+var
+  i:  Integer;
 
   Function GetImplicitRegisterStr(RegIdx: TSVCRegisterIndex): String;
   var
@@ -219,8 +263,8 @@ procedure TSVCUnparser.Unparse_Stage_Suffix;
           2:  begin
                 AppendToLine(SVC_ASM_PARSER_CHAR_INSTR_ARGS_MEMSTART +
                              GetRegisterStr(fUnparserData.Window.Data[fUnparserData.Window.Position]));
-                AppendToLine('+ 0x' + IntToHex(UInt16(fUnparserData.Window.Data[fUnparserData.Window.Position]) or
-                               UInt16(fUnparserData.Window.Data[fUnparserData.Window.Position + 1] shl 8),4) +
+                AppendToLine('+ 0x' + IntToHex(UInt16(fUnparserData.Window.Data[fUnparserData.Window.Position + 1]) or
+                               UInt16(fUnparserData.Window.Data[fUnparserData.Window.Position + 2] shl 8),4) +
                                SVC_ASM_PARSER_CHAR_INSTR_ARGS_MEMEND);
               end;
           3:  begin
@@ -274,48 +318,85 @@ If fUnparserData.ArgIdx < Length(fLists.Instructions[fUnparserData.InstrIdx].Arg
   begin
     case fLists.Instructions[fUnparserData.InstrIdx].Arguments[fUnparserData.ArgIdx] of
       iatIP:    begin
-                  AppendToLine(GetImplicitRegisterStr(SVC_REG_IMPL_IDX_IP));
+                  If not fUnparserData.HexOnly then
+                    AppendToLine(GetImplicitRegisterStr(SVC_REG_IMPL_IDX_IP));
                   Dec(fUnparserData.Window.Position);
                 end;
       iatFLAGS: begin
-                  AppendToLine(GetImplicitRegisterStr(SVC_REG_IMPL_IDX_FLAGS));
+                  If not fUnparserData.HexOnly then
+                    AppendToLine(GetImplicitRegisterStr(SVC_REG_IMPL_IDX_FLAGS));
                   Dec(fUnparserData.Window.Position);
                 end;
       iatCNTR:  begin
-                  AppendToLine(GetImplicitRegisterStr(SVC_REG_IMPL_IDX_CNTR));
+                  If not fUnparserData.HexOnly then
+                    AppendToLine(GetImplicitRegisterStr(SVC_REG_IMPL_IDX_CNTR));
                   Dec(fUnparserData.Window.Position);
                 end;
       iatCR:    begin
-                  AppendToLine(GetImplicitRegisterStr(SVC_REG_IMPL_IDX_CR));
+                  If not fUnparserData.HexOnly then
+                    AppendToLine(GetImplicitRegisterStr(SVC_REG_IMPL_IDX_CR));
                   Dec(fUnparserData.Window.Position);
                 end;                  
-      iatREL8:  AppendToLine('byte ' + IntToStr(Int8(fUnparserData.Window.Data[fUnparserData.Window.Position])));
+      iatREL8:  begin
+                  AppendToHexLine(fUnparserData.Window.Data[fUnparserData.Window.Position],wmitArgument,True);
+                  If not fUnparserData.HexOnly then
+                    AppendToLine('byte ' + IntToStr(Int8(fUnparserData.Window.Data[fUnparserData.Window.Position])));
+                end;
       iatREL16: If (fUnparserData.Window.Position + 1) < Length(fUnparserData.Window.Data) then
                   begin
-                    AppendToLine('word ' + IntToStr(Int16(UInt16(fUnparserData.Window.Data[fUnparserData.Window.Position]) or
-                      UInt16(fUnparserData.Window.Data[fUnparserData.Window.Position + 1] shl 8))));
+                    AppendToHexLine(fUnparserData.Window.Data[fUnparserData.Window.Position],wmitArgument,True);
+                    AppendToHexLine(fUnparserData.Window.Data[fUnparserData.Window.Position + 1],wmitArgument,False);
+                    If not fUnparserData.HexOnly then
+                      AppendToLine('word ' + IntToStr(Int16(UInt16(fUnparserData.Window.Data[fUnparserData.Window.Position]) or
+                        UInt16(fUnparserData.Window.Data[fUnparserData.Window.Position + 1] shl 8))));
                     Inc(fUnparserData.Window.Position);
                   end
                 else raise ESVCUnparsingError.Create('Out of instruction window');
-      iatIMM8:  AppendToLine('0x' + IntToHex(UInt8(fUnparserData.Window.Data[fUnparserData.Window.Position]),2));
+      iatIMM8:  begin
+                  AppendToHexLine(fUnparserData.Window.Data[fUnparserData.Window.Position],wmitArgument,True);
+                  If not fUnparserData.HexOnly then
+                    AppendToLine('0x' + IntToHex(UInt8(fUnparserData.Window.Data[fUnparserData.Window.Position]),2));
+                end;
       iatIMM16: If (fUnparserData.Window.Position + 1) < Length(fUnparserData.Window.Data) then
                   begin
-                    AppendToLine('0x' + IntToHex(UInt16(fUnparserData.Window.Data[fUnparserData.Window.Position]) or
-                      UInt16(fUnparserData.Window.Data[fUnparserData.Window.Position + 1] shl 8),4));
+                    AppendToHexLine(fUnparserData.Window.Data[fUnparserData.Window.Position],wmitArgument,True);
+                    AppendToHexLine(fUnparserData.Window.Data[fUnparserData.Window.Position + 1],wmitArgument,False);
+                    If not fUnparserData.HexOnly then
+                      AppendToLine('0x' + IntToHex(UInt16(fUnparserData.Window.Data[fUnparserData.Window.Position]) or
+                        UInt16(fUnparserData.Window.Data[fUnparserData.Window.Position + 1] shl 8),4));
                     Inc(fUnparserData.Window.Position);
                   end
                 else raise ESVCUnparsingError.Create('Out of instruction window');
       iatREG8,
-      iatREG16: AppendToLine(GetRegisterStr(fUnparserData.Window.Data[fUnparserData.Window.Position]));
+      iatREG16: begin
+                  AppendToHexLine(fUnparserData.Window.Data[fUnparserData.Window.Position],wmitArgument,True);
+                  If not fUnparserData.HexOnly then
+                    AppendToLine(GetRegisterStr(fUnparserData.Window.Data[fUnparserData.Window.Position]));
+                end;
       iatMEM8:  begin
-                  AppendToLine('byte ptr');
-                  AppendAddressing;
+                  For i := 0 to Pred(AddressingModeLength(fUnparserData.AddrMode)) do
+                    AppendToHexLine(fUnparserData.Window.Data[fUnparserData.Window.Position + i],wmitArgument,i = 0);
+                  If not fUnparserData.HexOnly then
+                    begin
+                      AppendToLine('byte ptr');
+                      AppendAddressing;
+                    end;
                 end;
       iatMEM16: begin
-                  AppendToLine('word ptr');
-                  AppendAddressing;
+                  For i := 0 to Pred(AddressingModeLength(fUnparserData.AddrMode)) do
+                    AppendToHexLine(fUnparserData.Window.Data[fUnparserData.Window.Position + i],wmitArgument,i = 0);
+                  If not fUnparserData.HexOnly then
+                    begin
+                      AppendToLine('word ptr');
+                      AppendAddressing;
+                    end;
                 end;
-      iatMEM:   AppendAddressing;
+      iatMEM:   begin
+                  For i := 0 to Pred(AddressingModeLength(fUnparserData.AddrMode)) do
+                    AppendToHexLine(fUnparserData.Window.Data[fUnparserData.Window.Position + i],wmitArgument,i = 0);      
+                  If not fUnparserData.HexOnly then
+                    AppendAddressing;
+                end;    
     else
       raise ESVCUnparsingError.Create('Invalid argument type');
     end;
@@ -323,7 +404,8 @@ If fUnparserData.ArgIdx < Length(fLists.Instructions[fUnparserData.InstrIdx].Arg
     If fUnparserData.ArgIdx < Length(fLists.Instructions[fUnparserData.InstrIdx].Arguments) then
       begin
         fStage := usArgument;
-        AppendToLine(SVC_ASM_PARSER_CHAR_INSTR_ARGS_DELIMITER,False);
+        If not fUnparserData.HexOnly then
+          AppendToLine(SVC_ASM_PARSER_CHAR_INSTR_ARGS_DELIMITER,False);
       end
     else fStage := usFinal;
   end
@@ -341,17 +423,11 @@ end;
 //------------------------------------------------------------------------------
 
 procedure TSVCUnparser.Unparse_Stage_Final;
-var
-  i:  Integer;
 begin
 If fStage = usFinal then
   begin
     If fUnparserData.HexOnly then
-      begin
-        fUnparserData.Line := '';
-        For i := Low(fUnparserData.Window.Data) to Pred(fUnparserData.Window.Position) do
-          fUnparserData.Line := fUnparserData.Line + IntToHex(fUnparserData.Window.Data[i],2);
-      end;
+      fUnparserData.Line := fUnparserData.HexLine;
   end
 else raise ESVCUnparsingError.Create('Unterminated instruction');
 end;
@@ -368,6 +444,11 @@ If not Assigned(Lists) then
     fLists.LoadFromResource(SVC_ASM_LISTS_DEFAULTRESOURCENAME);
   end
 else fLists := Lists;
+// initialize data
+fUnparserData.HexOnly := False;
+fUnparserData.SplitHexLine := False;
+fUnparserData.Line := '';
+fUnparserData.HexLine := '';
 end;
 
 //------------------------------------------------------------------------------
@@ -381,20 +462,25 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function TSVCUnparser.Unparse(InstructionWindow: TSVCInstructionWindow; HexOnly: Boolean = False): Integer;
+Function TSVCUnparser.Unparse(InstructionWindow: TSVCInstructionWindow): Integer;
+var
+  i:  Integer;
 begin
 fStage := usInitial;
 // init unparsing data
 fUnparserData.Window := InstructionWindow;
-fUnparserData.Line := '';
 fUnparserData.Window.Position := Low(fUnparserData.Window.Data);
-fUnparserData.HexOnly := HexOnly;
+For i := Low(TSVCUnparserWindowMap) to High(TSVCUnparserWindowMap) do
+  fUnparserData.WindowMap[i] := wmitNone;
+fUnparserData.WindowMapPos := 0;
+fUnparserData.Line := '';
+fUnparserData.HexLine := '';
 SetLength(fUnparserData.OpCode,0);
 fUnparserData.InstrIdx := -1;
 fUnparserData.AddrMode := 255;  // invalid addressing mode
 fUnparserData.ArgIdx := 0;
-// processing cycle
 try
+  // processing cycle
   while fUnparserData.Window.Position <= High(fUnparserData.Window.Data) do
     begin
       case fStage of
@@ -421,7 +507,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function TSVCUnparser.Unparse(InstructionData: array of TSVCByte; HexOnly: Boolean = False): Integer;
+Function TSVCUnparser.Unparse(InstructionData: array of TSVCByte): Integer;
 var
   Temp: TSVCInstructionWindow;
   i:    Integer;
@@ -432,7 +518,7 @@ If Length(InstructionData) <= Length(Temp.Data) then
     Temp.Position := Low(Temp.Data);
     For i := Low(InstructionData) to High(InstructionData) do
       Temp.Data[i] := InstructionData[i];
-    Result := Unparse(Temp,HexOnly);
+    Result := Unparse(Temp);
   end
 else raise Exception.CreateFmt('TSVCUnparser.Unparse: Instruction array too long (%d).',[Length(InstructionData)]);
 end;
