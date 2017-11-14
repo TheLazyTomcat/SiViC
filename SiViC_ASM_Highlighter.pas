@@ -31,18 +31,19 @@ type
     fLine:      String;
     fTokens:    TSVCHighlighterTokens;
     Function GetToken(Index: Integer): TSVCHighlighterToken;
-    Function GetContComment: Boolean;
-    procedure SetContComment(Value: Boolean);
+    Function GetContCommentType: TSVCLexerCommentType;
+    procedure SetContCommentType(Value: TSVCLexerCommentType);
   protected
     procedure ProcessTokens; virtual;
   public
     constructor Create(Lists: TSVCListManager = nil);
     destructor Destroy; override;
+    procedure Initialize; virtual;
     procedure Analyze(const Line: String); virtual;
     property Tokens[Index: Integer]: TSVCHighlighterToken read GetToken; default;
   published
     property Line: String read fLine;
-    property ContinuousComment: Boolean read GetContComment write SetContComment;
+    property ContinuousCommentType: TSVCLexerCommentType read GetContCommentType write SetContCommentType;
     property Count: Integer read fTokens.Count;
   end;
 
@@ -63,16 +64,16 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function TSVCHighlighter.GetContComment: Boolean;
+Function TSVCHighlighter.GetContCommentType: TSVCLexerCommentType;
 begin
-Result := fLexer.ContinuousComment;
+Result := fLexer.ContinuousCommentType;
 end;
 
 //------------------------------------------------------------------------------
 
-procedure TSVCHighlighter.SetContComment(Value: Boolean);
+procedure TSVCHighlighter.SetContCommentType(Value: TSVCLexerCommentType);
 begin
-fLexer.ContinuousComment := Value;
+fLexer.ContinuousCommentType := Value;
 end;
 
 //==============================================================================
@@ -151,6 +152,13 @@ If fOwnsLists then
   fLists.Free;
 fLexer.Free;
 inherited;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCHighlighter.Initialize;
+begin
+fLexer.Initialize;
 end;
 
 //------------------------------------------------------------------------------

@@ -736,7 +736,14 @@ begin
 If Assigned(fOnBeforeInstruction) then
   fOnBeforeInstruction(Self);
 InstructionDecode;
-InstructionExecute;
+If Assigned(fCurrentInstruction.InstructionHandler) then
+  try
+    InstructionExecute;
+    fCurrentInstruction.PrevPrefixes := fCurrentInstruction.Prefixes;
+  finally
+    InvalidateInstructionData;
+  end
+else raise ESVCInterruptException.Create(SVC_EXCEPTION_INVALIDINSTRUCTION);
 Inc(fExecutionCount);
 If Assigned(fOnAfterInstruction) then
   fOnAfterInstruction(Self);
@@ -755,14 +762,7 @@ end;
 
 procedure TSVCProcessor.InstructionExecute;
 begin
-If Assigned(fCurrentInstruction.InstructionHandler) then
-  try
-    fCurrentInstruction.InstructionHandler;
-    fCurrentInstruction.PrevPrefixes := fCurrentInstruction.Prefixes;
-  finally
-    InvalidateInstructionData;
-  end
-else raise ESVCInterruptException.Create(SVC_EXCEPTION_INVALIDINSTRUCTION);
+fCurrentInstruction.InstructionHandler;
 end;
 
 //------------------------------------------------------------------------------

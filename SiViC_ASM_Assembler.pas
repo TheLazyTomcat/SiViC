@@ -491,8 +491,10 @@ end;
 
 Function TSVCAssembler.AddAssemblerLine(Item: TSVCAssemblerLine): Integer;
 begin
+If Length(fAssemblerLines.Arr) <= 0 then
+  SetLength(fAssemblerLines.Arr,256);
 If fAssemblerLines.Count >= Length(fAssemblerLines.Arr) then
-  SetLength(fAssemblerLines.Arr,Length(fAssemblerLines.Arr) + 32);
+  SetLength(fAssemblerLines.Arr,Length(fAssemblerLines.Arr) * 2);
 fAssemblerLines.Arr[fAssemblerLines.Count] := Item;
 Result := fAssemblerLines.Count;
 Inc(fAssemblerLines.Count);
@@ -538,8 +540,10 @@ end;
 
 Function TSVCAssembler.AddAssemblerMessage(Item: TSVCAssemblerMessage): Integer;
 begin
+If Length(fAssemblerMessages.Arr) <= 0 then
+  SetLength(fAssemblerMessages.Arr,128);
 If fAssemblerMessages.Count >= Length(fAssemblerMessages.Arr) then
-  SetLength(fAssemblerMessages.Arr,Length(fAssemblerMessages.Arr) + 8);
+  SetLength(fAssemblerMessages.Arr,Length(fAssemblerMessages.Arr) * 2);
 fAssemblerMessages.Arr[fAssemblerMessages.Count] := Item;
 Result := fAssemblerMessages.Count;
 Inc(fAssemblerMessages.Count);

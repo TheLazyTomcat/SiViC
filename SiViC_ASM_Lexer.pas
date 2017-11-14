@@ -37,7 +37,6 @@ type                                   //       {}       (**)      /**/
   private
     fLine:              String;
     fIncludeComments:   Boolean;
-    fContinuousComment: Boolean;
     fTokens:            TSVCLexerTokens;
     // tokenizing engine variables
     fStage:             TSVCLexerStage;
@@ -68,7 +67,6 @@ type                                   //       {}       (**)      /**/
     property Tokens[Index: Integer]: TSVCLexerToken read GetToken; default;
   published
     property IncludeComments: Boolean read fIncludeComments write fIncludeComments;
-    property ContinuousComment: Boolean read fContinuousComment write fContinuousComment;
     property ContinuousCommentType: TSVCLexerCommentType read fCommentType write fCommentType;
     property Count: Integer read fTokens.Count;
   end;
@@ -159,6 +157,8 @@ case fLine[fPosition] of
               end
           end;
 end;
+If Result then
+  fCommentType := lcmtNone;
 end;
 
 //------------------------------------------------------------------------------
@@ -388,7 +388,7 @@ procedure TSVCLexer.Initialize;
 begin
 fStage := lsTraverse;
 Clear;
-fContinuousComment := False;
+fCommentType := lcmtNone;
 end;
 
 //------------------------------------------------------------------------------
@@ -404,11 +404,10 @@ fTokenStart := 1;
 fTokenLength := 0;
 If Length(fLine) > 0 then
   begin
-    If fContinuousComment then
+    If fCommentType in [lcmtType2,lcmtType3,lcmtType4] then
       fStage := lsComment
     else
       fStage := lsTraverse;
-    fContinuousComment := False;
     while (fPosition >= 1) and (fPosition <= Length(fLine)) do
       begin
         case fStage of
@@ -426,11 +425,8 @@ If Length(fLine) > 0 then
       lsNumber:
         AddToken(Trim(Copy(fLine,fTokenStart,fTokenLength)),fTokenStart,lttNumber);
       lsComment:
-        begin
-          If fIncludeComments then
-            AddToken(Copy(fLine,fTokenStart,fTokenLength),fTokenStart,lttComment);
-          fContinuousComment := fCommentType in [lcmtType2,lcmtType3,lcmtType4];
-        end;
+        If fIncludeComments then
+          AddToken(Copy(fLine,fTokenStart,fTokenLength),fTokenStart,lttComment);
       lsString:
         AddToken(Copy(fLine,fTokenStart,fTokenLength),fTokenStart,lttString);
     end;

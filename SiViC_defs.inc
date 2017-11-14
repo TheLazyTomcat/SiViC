@@ -32,6 +32,8 @@
 
 {$TYPEINFO ON}
 
+{$DEFINE SVC_Debug}
+
 
 
 
