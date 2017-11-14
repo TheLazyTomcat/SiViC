@@ -31,12 +31,14 @@ type
   private
     fFaultClass:          String;
     fFaultMessage:        String;
+  {$IFDEF SVC_Debug}
     fOnBeforeInstruction: TNotifyEvent;
     fOnAfterInstruction:  TNotifyEvent;
     fOnMemoryRead:        TSVCMemoryAccessEvent;
     fOnMemoryWrite:       TSVCMemoryAccessEvent;
     fOnNVMemoryRead:      TSVCMemoryAccessEvent;
     fOnNVMemoryWrite:     TSVCMemoryAccessEvent;
+  {$ENDIF SVC_Debug}
   protected
     fExecutionCount:      UInt64;
     // internal processor state
@@ -52,10 +54,12 @@ type
     Function GetInfoPage({%H-}Page: TSVCProcessorInfoPage; {%H-}Param: TSVCProcessorInfoData): TSVCProcessorInfoData; virtual;
     // memory access
     Function ResolveMemoryAddress(AddressingMode: TSVCInstructionAddressingMode; out Address: TSVCNative): Boolean; virtual;
+  {$IFDEF SVC_Debug}
     procedure DoMemoryReadEvent(Address: TSVCNative); virtual;
     procedure DoMemoryWriteEvent(Address: TSVCNative); virtual;
     procedure DoNVMemoryReadEvent(Address: TSVCNative); virtual;
     procedure DoNVMemoryWriteEvent(Address: TSVCNative); virtual;
+  {$ENDIF SVC_Debug}
     // stack access and manipulation
     Function IsValidStackPUSHArea(AreaSize: TSVCNative): TSVCStackError; virtual;
     Function IsValidStackPOPArea(AreaSize: TSVCNative): TSVCStackError; virtual;
@@ -130,23 +134,27 @@ type
     procedure ConnectDevice(PortIndex: TSVCPortIndex; InHandler,OutHandler: TSVCPortEvent); virtual;
     Function SaveNVMemory(const FileName: String): Boolean; virtual;
     Function LoadNVMemory(const FileName: String): Boolean; virtual;
+  {$IFDEF SVC_Debug}
     // for debugging purposes...
     property Memory: TSVCMemory read fMemory;
     property NVMemory: TSVCMemory read fNVMemory;
     property Registers: TSVCRegisters read fRegisters;
     property InterruptHandlers: TSVCInterruptHandlers read fInterruptHandlers;
     property Ports: TSVCPorts read fPorts;
+  {$ENDIF SVC_Debug}
   published
     property State: TSVCProcessorState read fState write fState;
     property ExecutionCount: UInt64 read fExecutionCount;
     property FaultClass: String read fFaultClass;
     property FaultMessage: String read fFaultMessage;
+  {$IFDEF SVC_Debug}
     property OnBeforeInstruction: TNotifyEvent read fOnBeforeInstruction write fOnBeforeInstruction;
     property OnAfterInstruction: TNotifyEvent read fOnAfterInstruction write fOnAfterInstruction;
     property OnMemoryRead: TSVCMemoryAccessEvent read fOnMemoryRead write fOnMemoryRead;
     property OnMemoryWrite: TSVCMemoryAccessEvent read fOnMemoryWrite write fOnMemoryWrite;
     property OnNVMemoryRead: TSVCMemoryAccessEvent read fOnNVMemoryRead write fOnNVMemoryRead;
     property OnNVMemoryWrite: TSVCMemoryAccessEvent read fOnNVMemoryWrite write fOnNVMemoryWrite;
+  {$ENDIF SVC_Debug}
   end;
 
 implementation
@@ -231,6 +239,8 @@ end;
 
 //------------------------------------------------------------------------------
 
+{$IFDEF SVC_Debug}
+
 procedure TSVCProcessor.DoMemoryReadEvent(Address: TSVCNative);
 begin
 If Assigned(fOnMemoryRead) then
@@ -260,6 +270,8 @@ begin
 If Assigned(fOnNVMemoryWrite) then
   fOnNVMemoryWrite(Self,Address);
 end;
+
+{$ENDIF SVC_Debug}
 
 //------------------------------------------------------------------------------
 
@@ -733,8 +745,10 @@ end;
 
 procedure TSVCProcessor.InstructionIssue;
 begin
+{$IFDEF SVC_Debug}
 If Assigned(fOnBeforeInstruction) then
   fOnBeforeInstruction(Self);
+{$ENDIF SVC_Debug}
 InstructionDecode;
 If Assigned(fCurrentInstruction.InstructionHandler) then
   try
@@ -745,8 +759,10 @@ If Assigned(fCurrentInstruction.InstructionHandler) then
   end
 else raise ESVCInterruptException.Create(SVC_EXCEPTION_INVALIDINSTRUCTION);
 Inc(fExecutionCount);
+{$IFDEF SVC_Debug}
 If Assigned(fOnAfterInstruction) then
   fOnAfterInstruction(Self);
+{$ENDIF SVC_Debug}
 end;
 
 //------------------------------------------------------------------------------
@@ -963,6 +979,9 @@ end;
 
 class Function TSVCProcessor.GetRevision: TSVCProcessorInfoData;
 begin
+{$IFDEF FPC}
+Result := 0;
+{$ENDIF}
 raise Exception.Create('TSVCProcessor.GetRevision: No revision number available');
 end;
 

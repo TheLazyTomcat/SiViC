@@ -1174,7 +1174,7 @@ try
     with fAssemblerLines.Arr[Index] do
       If (LineType in [altData,altInstr]) and (Length(Instruction.Data) > 0) then
         For i := Low(Instruction.Data) to High(Instruction.Data) do
-          If PtrUInt(TempPtr) < PtrUInt(Result.ProgramData) + PtrUInt(Result.ProgramSize) then
+          If {%H-}PtrUInt(TempPtr) < {%H-}PtrUInt(Result.ProgramData) + PtrUInt(Result.ProgramSize) then
             begin
               TempPtr^ := Instruction.Data[i];
               Inc(TempPtr);

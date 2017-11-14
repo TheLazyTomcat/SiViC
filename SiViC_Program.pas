@@ -27,8 +27,7 @@ interface
 uses
   Classes,
   AuxTypes,
-  SiViC_Common,
-  SiViC_Memory;
+  SiViC_Common;
 
 type
   TSVCProgramDefaultSysVal = record

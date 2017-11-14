@@ -134,7 +134,7 @@ If size > 0 then
   begin
     SetLength(Arr,Length(Arr) + Size);
     For i := 0 to Pred(Size) do
-      Arr[Length(Arr) - Size + i] := TSVCByte(Pointer(PtrUInt(Addr(Data)) + PtrUInt(i))^);
+      Arr[Length(Arr) - Size + i] := TSVCByte({%H-}Pointer({%H-}PtrUInt(Addr(Data)) + PtrUInt(i))^);
   end;
 end;
 

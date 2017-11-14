@@ -415,7 +415,9 @@ ArgumentsDecode(True,[iatMEM16]);
 RaiseStackError(IsValidStackPUSHArea(SVC_SZ_NATIVE));
 StackPUSH(fRegisters.IP);
 fRegisters.IP := GetArgVal(0);
+{$IFDEF SVC_Debug}
 DoMemoryReadEvent(GetArgAddr(0));
+{$ENDIF SVC_Debug}
 end;
 
 //------------------------------------------------------------------------------
@@ -480,7 +482,9 @@ begin
 ArgumentsDecode(True,[iatMEM8]);
 RaiseStackError(IsValidStackPUSHArea(SVC_SZ_BYTE));
 StackPUSH_B(TSVCByte(GetArgVal(0)));
+{$IFDEF SVC_Debug}
 DoMemoryReadEvent(GetArgAddr(0));
+{$ENDIF SVC_Debug}
 end;
 
 //------------------------------------------------------------------------------
@@ -490,7 +494,9 @@ begin
 ArgumentsDecode(True,[iatMEM16]);
 RaiseStackError(IsValidStackPUSHArea(SVC_SZ_WORD));
 StackPUSH_W(TSVCWord(GetArgVal(0)));
+{$IFDEF SVC_Debug}
 DoMemoryReadEvent(GetArgAddr(0));
+{$ENDIF SVC_Debug}
 end;
 
 //------------------------------------------------------------------------------
@@ -518,7 +524,9 @@ begin
 ArgumentsDecode(True,[iatMEM8]);
 RaiseStackError(IsValidStackPOPArea(SVC_SZ_BYTE));
 TSVCByte(GetArgPtr(0)^) := StackPOP_B;
+{$IFDEF SVC_Debug}
 DoMemoryWriteEvent(GetArgAddr(0));
+{$ENDIF SVC_Debug}
 end;
 
 //------------------------------------------------------------------------------
@@ -528,7 +536,9 @@ begin
 ArgumentsDecode(True,[iatMEM16]);
 RaiseStackError(IsValidStackPOPArea(SVC_SZ_WORD));
 TSVCWord(GetArgPtr(0)^) := StackPOP_W;
+{$IFDEF SVC_Debug}
 DoMemoryWriteEvent(GetArgAddr(0));
+{$ENDIF SVC_Debug}
 end;
 
 //------------------------------------------------------------------------------
@@ -686,7 +696,9 @@ procedure TSVCProcessor_Base.Instruction_2B;   // MOV        mem16,  CNTR
 begin
 ArgumentsDecode(True,[iatMEM16,iatCNTR]);
 TSVCNative(GetArgPtr(0)^) := fRegisters.CNTR;
+{$IFDEF SVC_Debug}
 DoMemoryWriteEvent(GetArgAddr(0));
+{$ENDIF SVC_Debug}
 end;
 
 //------------------------------------------------------------------------------
@@ -711,7 +723,9 @@ procedure TSVCProcessor_Base.Instruction_2E;   // MOV        CNTR,   mem16
 begin
 ArgumentsDecode(True,[iatCNTR,iatMEM16]);
 fRegisters.CNTR := GetArgVal(1);
+{$IFDEF SVC_Debug}
 DoMemoryReadEvent(GetArgAddr(1));
+{$ENDIF SVC_Debug}
 end;
 
 //------------------------------------------------------------------------------
@@ -736,7 +750,9 @@ procedure TSVCProcessor_Base.Instruction_31;   // LOAD       reg8,   mem8
 begin
 ArgumentsDecode(True,[iatREG8,iatMEM8],True);
 TSVCByte(GetArgPtr(0)^) := TSVCByte(GetArgVal(1));
+{$IFDEF SVC_Debug}
 DoNVMemoryReadEvent(GetArgAddr(1));
+{$ENDIF SVC_Debug}
 end;
 
 //------------------------------------------------------------------------------
@@ -745,7 +761,9 @@ procedure TSVCProcessor_Base.Instruction_32;   // LOAD       reg16,  mem16
 begin
 ArgumentsDecode(True,[iatREG16,iatMEM16],True);
 TSVCWord(GetArgPtr(0)^) := TSVCWord(GetArgVal(1));
+{$IFDEF SVC_Debug}
 DoNVMemoryReadEvent(GetArgAddr(1));
+{$ENDIF SVC_Debug}
 end;
 
 //------------------------------------------------------------------------------
@@ -754,7 +772,9 @@ procedure TSVCProcessor_Base.Instruction_33;   // STORE      mem8,   reg8
 begin
 ArgumentsDecode(True,[iatMEM8,iatREG8],True);
 TSVCByte(GetArgPtr(0)^) := TSVCByte(GetArgVal(1));
+{$IFDEF SVC_Debug}
 DoNVMemoryWriteEvent(GetArgAddr(0));
+{$ENDIF SVC_Debug}
 end;
 
 //------------------------------------------------------------------------------
@@ -763,7 +783,9 @@ procedure TSVCProcessor_Base.Instruction_34;   // STORE      mem16,  reg16
 begin
 ArgumentsDecode(True,[iatMEM16,iatREG16],True);
 TSVCWord(GetArgPtr(0)^) := TSVCWord(GetArgVal(1));
+{$IFDEF SVC_Debug}
 DoNVMemoryWriteEvent(GetArgAddr(0));
+{$ENDIF SVC_Debug}
 end;
 
 //------------------------------------------------------------------------------

@@ -514,7 +514,7 @@ var
 begin
 If Length(InstructionData) <= Length(Temp.Data) then
   begin
-    FillChar(Temp.Data,Length(Temp.Data),0);
+    FillChar({%H-}Temp.Data,Length(Temp.Data),0);
     Temp.Position := Low(Temp.Data);
     For i := Low(InstructionData) to High(InstructionData) do
       Temp.Data[i] := InstructionData[i];
