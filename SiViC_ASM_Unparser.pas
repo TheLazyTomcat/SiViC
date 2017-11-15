@@ -51,7 +51,7 @@ type
     destructor Destroy; override;
     Function Unparse(InstructionWindow: TSVCInstructionWindow): Integer; overload; virtual;
     Function Unparse(InstructionData: array of TSVCByte): Integer; overload; virtual;
-    property WindowMap: TSVCUnparserWindowMap read fUnparserData.WindowMap;
+    property InstructionWindowMap: TSVCUnparserWindowMap read fUnparserData.WindowMap;
   published
     property HexOnly: Boolean read fUnparserData.HexOnly write fUnparserData.HexOnly;
     property SplitHexLine: Boolean read fUnparserData.SplitHexLine write fUnparserData.SplitHexLine;

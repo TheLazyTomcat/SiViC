@@ -1000,14 +1000,14 @@ end;
 
 class Function TSVCProcessor.CheckProgramMinRevision(ProgramObject: TSVCProgram): Boolean;
 begin
-Result := TSVCProcessorInfoData(ProgramObject.RequiredMinRevision) >= GetArchitecture;
+Result := TSVCProcessorInfoData(ProgramObject.RequiredMinRevision) <= GetArchitecture;
 end;
 
 //------------------------------------------------------------------------------
 
 class Function TSVCProcessor.CheckProgramMaxRevision(ProgramObject: TSVCProgram): Boolean;
 begin
-Result := TSVCProcessorInfoData(ProgramObject.RequiredMaxRevision) <= GetArchitecture;
+Result := TSVCProcessorInfoData(ProgramObject.RequiredMaxRevision) >= GetArchitecture;
 end;
 
 //------------------------------------------------------------------------------
