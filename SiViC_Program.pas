@@ -15,6 +15,9 @@ interface
     4B(UInt32)  - stack size in bytes
     4B(UInt32)  - memory size in bytes
     4B(UInt32)  - non-volatile memory size in bytes
+    4B(UInt32)  - required processor architecture
+    4B(UInt32)  - required minimal processor revision
+    4B(UInt32)  - required maximal processor revision
     4B(UInt32)  - size of code in bytes
     []TSVCByte  - code data
     4B(UInt32)  - count of of variable inits...
@@ -29,25 +32,32 @@ uses
   AuxTypes,
   SiViC_Common;
 
+const
+  SVC_PROGRAM_SVCFILE_MINSIZE   = 8{bytes};
+  SVC_PROGRAM_SVCFILE_SIGNATURE = $70435653{SVCp};
+  SVC_PROGRAM_SVCFILE_STRUCTDEF = 0;
+  
+  SVC_PROGRAM_SYSVALNAME_STACKSIZE = 'STACK_SIZE';
+  SVC_PROGRAM_SYSVALNAME_MEMSIZE   = 'MEM_SIZE';
+  SVC_PROGRAM_SYSVALNAME_NVMEMSIZE = 'NVMEM_SIZE';
+  SVC_PROGRAM_SYSVALNAME_REQARCH   = 'REQ_ARCHITECTURE';
+  SVC_PROGRAM_SYSVALNAME_REQMINREV = 'REQ_MIN_REVISION';
+  SVC_PROGRAM_SYSVALNAME_REQMAXREV = 'REQ_MAX_REVISION';
+
 type
-  TSVCProgramDefaultSysVal = record
+  TSVCProgramSysVal = record
     Identifier: String;
     Value:      TSVCComp;
   end;
 
 const
-  SVC_PROGRAM_SVCFILE_MINSIZE   = 8{bytes};
-  SVC_PROGRAM_SVCFILE_SIGNATURE = $70435653{SVCp};
-  SVC_PROGRAM_SVCFILE_STRUCTDEF = 0;
-
-  SVC_PROGRAM_SYSVALNAME_STACKSIZE = 'STACK_SIZE';
-  SVC_PROGRAM_SYSVALNAME_MEMSIZE   = 'MEM_SIZE';
-  SVC_PROGRAM_SYSVALNAME_NVMEMSIZE = 'NVMEM_SIZE';
-
-  SVC_PROGRAM_DEFAULTSYSVALS: array[0..2] of TSVCProgramDefaultSysVal = (
+  SVC_PROGRAM_DEFAULTSYSVALS: array[0..5] of TSVCProgramSysVal = (
     (Identifier: SVC_PROGRAM_SYSVALNAME_STACKSIZE;  Value: 128),
     (Identifier: SVC_PROGRAM_SYSVALNAME_MEMSIZE;    Value: 256),
-    (Identifier: SVC_PROGRAM_SYSVALNAME_NVMEMSIZE;  Value: 0));
+    (Identifier: SVC_PROGRAM_SYSVALNAME_NVMEMSIZE;  Value: 0),
+    (Identifier: SVC_PROGRAM_SYSVALNAME_REQARCH;    Value: TSVCComp($000057C0)),
+    (Identifier: SVC_PROGRAM_SYSVALNAME_REQMINREV;  Value: 0),
+    (Identifier: SVC_PROGRAM_SYSVALNAME_REQMAXREV;  Value: TSVCComp($FFFFFFFF)));
 
 type
   TSVCProgramVarInit = record
@@ -62,12 +72,15 @@ type
 
   TSVCProgram = class(TObject)
   private
-    fProgramData: Pointer;
-    fProgramSize: TMemSize;
-    fVarInits:    TSVCProgramVarInits;
-    fStackSize:   TMemSize;
-    fMemSize:     TMemSize;
-    fNVMemSize:   TMemSize;
+    fProgramData:     Pointer;
+    fProgramSize:     TMemSize;
+    fVarInits:        TSVCProgramVarInits;
+    fStackSize:       TMemSize;
+    fMemSize:         TMemSize;
+    fNVMemSize:       TMemSize;
+    fReqArchitecture: TSVCNative;
+    fReqMinRevision:  TSVCNative;
+    fReqMaxRevision:  TSVCNative;
     procedure SetProgramSize(Value: TMemSize);
     Function GetVarInit(Index: Integer): TSVCProgramVarInit;
   protected
@@ -84,13 +97,16 @@ type
     procedure SaveToFile(const FileName: String); virtual;
     procedure LoadFromFile(const FileName: String); virtual;
     property ProgramData: Pointer read fProgramData;
-    property VariableInits[Index: Integer]: TSVCProgramVarInit read GetVarInit; default;
+    property VariableInits[Index: Integer]: TSVCProgramVarInit read GetVarInit;
   published
     property ProgramSize: TMemSize read fProgramSize write SetProgramSize;
     property VariableInitCount: Integer read fVarInits.Count;
     property StackSize: TMemSize read fStackSize write fStackSize;
     property MemorySize: TMemSize read fMemSize write fMemSize;    
     property NVMemorySize: TMemSize read fNVMemSize write fNVMemSize;
+    property RequiredArchitecture: TSVCNative read fReqArchitecture write fReqArchitecture;
+    property RequiredMinRevision: TSVCNative read fReqMinRevision write fReqMinRevision;
+    property RequiredMaxRevision: TSVCNative read fReqMaxRevision write fReqMaxRevision;
   end;
 
 implementation
@@ -127,6 +143,9 @@ begin
 Stream_WriteUInt32(Stream,UInt32(fStackSize));
 Stream_WriteUInt32(Stream,UInt32(fMemSize));
 Stream_WriteUInt32(Stream,UInt32(fNVMemSize));
+Stream_WriteUInt32(Stream,UInt32(fReqArchitecture));
+Stream_WriteUInt32(Stream,UInt32(fReqMinRevision));
+Stream_WriteUInt32(Stream,UInt32(fReqMaxRevision));
 Stream_WriteUInt32(Stream,UInt32(fProgramSize));
 Stream_WriteBuffer(Stream,fProgramData^,fProgramSize);
 Stream_WriteUInt32(Stream,UInt32(fVarInits.Count));
@@ -149,6 +168,9 @@ begin
 fStackSize := TMemSize(Stream_ReadUInt32(Stream));
 fMemSize := TMemSize(Stream_ReadUInt32(Stream));
 fNVMemSize := TMemSize(Stream_ReadUInt32(Stream));
+fReqArchitecture := TMemSize(Stream_ReadUInt32(Stream));
+fReqMinRevision := TMemSize(Stream_ReadUInt32(Stream));
+fReqMaxRevision := TMemSize(Stream_ReadUInt32(Stream));
 SetProgramSize(TMemSize(Stream_ReadUInt32(Stream)));
 Stream_ReadBuffer(Stream,fProgramData^,fProgramSize);
 ClearVariableInit;

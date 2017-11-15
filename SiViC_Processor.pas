@@ -121,6 +121,10 @@ type
   public
     class Function GetArchitecture: TSVCProcessorInfoData; virtual;
     class Function GetRevision: TSVCProcessorInfoData; virtual;
+    class Function CheckProgramArchitecture(ProgramObject: TSVCProgram): Boolean; virtual;
+    class Function CheckProgramMinRevision(ProgramObject: TSVCProgram): Boolean; virtual;
+    class Function CheckProgramMaxRevision(ProgramObject: TSVCProgram): Boolean; virtual;
+    class Function CheckProgramCompatibility(ProgramObject: TSVCProgram): Boolean; virtual;
     constructor Create;
     destructor Destroy; override;
     procedure Initialize(MemorySize, NVMemorySize: TMemSize); overload; virtual;
@@ -980,9 +984,38 @@ end;
 class Function TSVCProcessor.GetRevision: TSVCProcessorInfoData;
 begin
 {$IFDEF FPC}
-Result := 0;
+Result := 0; // fpc generates warning when not present, delphi generates warning when it is present... 
 {$ENDIF}
 raise Exception.Create('TSVCProcessor.GetRevision: No revision number available');
+end;
+
+//------------------------------------------------------------------------------
+
+class Function TSVCProcessor.CheckProgramArchitecture(ProgramObject: TSVCProgram): Boolean;
+begin
+Result := TSVCProcessorInfoData(ProgramObject.RequiredArchitecture) = GetArchitecture;
+end;
+
+//------------------------------------------------------------------------------
+
+class Function TSVCProcessor.CheckProgramMinRevision(ProgramObject: TSVCProgram): Boolean;
+begin
+Result := TSVCProcessorInfoData(ProgramObject.RequiredMinRevision) >= GetArchitecture;
+end;
+
+//------------------------------------------------------------------------------
+
+class Function TSVCProcessor.CheckProgramMaxRevision(ProgramObject: TSVCProgram): Boolean;
+begin
+Result := TSVCProcessorInfoData(ProgramObject.RequiredMaxRevision) <= GetArchitecture;
+end;
+
+//------------------------------------------------------------------------------
+
+class Function TSVCProcessor.CheckProgramCompatibility(ProgramObject: TSVCProgram): Boolean;
+begin
+Result := CheckProgramArchitecture(ProgramObject) and CheckProgramMinRevision(ProgramObject) and
+          CheckProgramMaxRevision(ProgramObject);
 end;
 
 //------------------------------------------------------------------------------
@@ -1021,10 +1054,21 @@ var
   i,j:  Integer;
   Temp: PByte;
 begin
+// compatibility checks
+If not CheckProgramArchitecture(ProgramObject) then
+  raise Exception.CreateFmt('TSVCProcessor.Initialize: Program requires different processor architecture (0x%.4x).',
+                            [TSVCProcessorInfoData(ProgramObject.RequiredArchitecture)]);
+If not CheckProgramMinRevision(ProgramObject) then
+  raise Exception.CreateFmt('TSVCProcessor.Initialize: Program requires higher processor revision (0x%.4x).',
+                            [TSVCProcessorInfoData(ProgramObject.RequiredMinRevision)]);
+If not CheckProgramMaxRevision(ProgramObject) then
+  raise Exception.CreateFmt('TSVCProcessor.Initialize: Program requires lower processor revision (0x%.4x).',
+                            [TSVCProcessorInfoData(ProgramObject.RequiredMaxRevision)]);
 // initialize memory and state
 Initialize(ProgramObject.MemorySize,ProgramObject.NVMemorySize);
 // initialize stack limit
-fRegisters.GP[REG_SL].Native := TSVCNative(ProgramObject.StackSize);
+fRegisters.GP[REG_SL].Native := TSVCNative(TSVCComp(ProgramObject.MemorySize) -
+                                           TSVCComp(ProgramObject.StackSize));
 // load program
 If ProgramObject.ProgramSize <= ProgramObject.MemorySize then
   Move(ProgramObject.ProgramData^,fMemory.Memory^,ProgramObject.ProgramSize)
@@ -1034,18 +1078,19 @@ else
 For i := 0 to Pred(ProgramObject.VariableInitCount) do
   begin
     // do checks
-    If TMemSize(ProgramObject[i].Address) >= fMemory.Size then
-      raise Exception.CreateFmt('TSVCProcessor.Initialize: Variable address (0x%.4x) out of bounds.',[ProgramObject[i].Address]);
-    If TMemSize(ProgramObject[i].Address) + TMemSize(Length(ProgramObject[i].Data)) > fMemory.Size then
+    If TMemSize(ProgramObject.VariableInits[i].Address) >= fMemory.Size then
+      raise Exception.CreateFmt('TSVCProcessor.Initialize: Variable address (0x%.4x) out of bounds.',[ProgramObject.VariableInits[i].Address]);
+    If TMemSize(ProgramObject.VariableInits[i].Address) + TMemSize(Length(ProgramObject.VariableInits[i].Data)) > fMemory.Size then
       raise Exception.Create('TSVCProcessor.Initialize: Variable cannot fit into available memory.');
-    // store data
-    Temp := PByte(fMemory.AddrPtr(ProgramObject[i].Address));
-    For j := Low(ProgramObject[i].Data) to High(ProgramObject[i].Data) do
+    // store variables data
+    Temp := PByte(fMemory.AddrPtr(ProgramObject.VariableInits[i].Address));
+    For j := Low(ProgramObject.VariableInits[i].Data) to High(ProgramObject.VariableInits[i].Data) do
       begin
-        Temp^ := ProgramObject[i].Data[j];
+        Temp^ := ProgramObject.VariableInits[i].Data[j];
         Inc(Temp);
       end
   end;
+
 end;
 
 //------------------------------------------------------------------------------

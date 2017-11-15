@@ -1184,12 +1184,12 @@ try
   For Index := Low(fVariables.Arr) to Pred(fVariables.Count) do
     Result.AddVariableInit(fVariables.Arr[Index].Address,fVariables.Arr[Index].Data);
   // set system values
-  Index := CheckedIndexOfSys(SVC_PROGRAM_SYSVALNAME_STACKSIZE);
-  Result.StackSize := TMemSize(fSystemValues.Arr[Index].Value);
-  Index := CheckedIndexOfSys(SVC_PROGRAM_SYSVALNAME_MEMSIZE);
-  Result.MemorySize := TMemSize(fSystemValues.Arr[Index].Value);
-  Index := CheckedIndexOfSys(SVC_PROGRAM_SYSVALNAME_NVMEMSIZE);
-  Result.NVMemorySize := TMemSize(fSystemValues.Arr[Index].Value);
+  Result.StackSize := TMemSize(fSystemValues.Arr[CheckedIndexOfSys(SVC_PROGRAM_SYSVALNAME_STACKSIZE)].Value);
+  Result.MemorySize := TMemSize(fSystemValues.Arr[CheckedIndexOfSys(SVC_PROGRAM_SYSVALNAME_MEMSIZE)].Value);
+  Result.NVMemorySize := TMemSize(fSystemValues.Arr[CheckedIndexOfSys(SVC_PROGRAM_SYSVALNAME_NVMEMSIZE)].Value);
+  Result.RequiredArchitecture := TMemSize(fSystemValues.Arr[CheckedIndexOfSys(SVC_PROGRAM_SYSVALNAME_REQARCH)].Value);
+  Result.RequiredMinRevision := TMemSize(fSystemValues.Arr[CheckedIndexOfSys(SVC_PROGRAM_SYSVALNAME_REQMINREV)].Value);
+  Result.RequiredMaxRevision := TMemSize(fSystemValues.Arr[CheckedIndexOfSys(SVC_PROGRAM_SYSVALNAME_REQMAXREV)].Value);
 except
   FreeAndNil(Result);
   raise;
