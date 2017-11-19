@@ -17,8 +17,8 @@ uses
   SiViC_Program;
 
 type
-  TSVCProcessorState = (psUninitialized,psRunning,psHalted,psReleased,
-                        psWaiting,psSynchronizing,psFailed);
+  TSVCProcessorState = (psUninitialized,psInitialized,psRunning,psHalted,
+                        psReleased,psWaiting,psSynchronizing,psFailed);
 
   // processor (system) information
   TSVCProcessorInfoPage = TSVCWord;
@@ -48,8 +48,12 @@ type
     fRegisters:           TSVCRegisters;
     fInterruptHandlers:   TSVCInterruptHandlers;
     fPorts:               TSVCPorts;
+    fInitialStackLimit:   TSVCNative;
     // data of the currently processed instruction
     fCurrentInstruction:  TSVCInstructionData;
+    // synchronization stuff
+    fOnSynchronization:   TNotifyEvent;
+    procedure EndSynchronization(Sender: TObject); virtual;
     // processor info engine
     Function GetInfoPage({%H-}Page: TSVCProcessorInfoPage; {%H-}Param: TSVCProcessorInfoData): TSVCProcessorInfoData; virtual;
     // memory access
@@ -147,10 +151,11 @@ type
     property Ports: TSVCPorts read fPorts;
   {$ENDIF SVC_Debug}
   published
-    property State: TSVCProcessorState read fState write fState;
+    property State: TSVCProcessorState read fState;
     property ExecutionCount: UInt64 read fExecutionCount;
     property FaultClass: String read fFaultClass;
     property FaultMessage: String read fFaultMessage;
+    property OnSynchronization: TNotifyEvent read fOnSynchronization write fOnSynchronization;
   {$IFDEF SVC_Debug}
     property OnBeforeInstruction: TNotifyEvent read fOnBeforeInstruction write fOnBeforeInstruction;
     property OnAfterInstruction: TNotifyEvent read fOnAfterInstruction write fOnAfterInstruction;
@@ -163,6 +168,13 @@ type
 
 implementation
 
+procedure TSVCProcessor.EndSynchronization(Sender: TObject);
+begin
+If fState = psSynchronizing then
+  fState := psRunning;
+end;
+
+//------------------------------------------------------------------------------
 
 Function TSVCProcessor.GetInfoPage(Page: TSVCProcessorInfoPage; Param: TSVCProcessorInfoData): TSVCProcessorInfoData;
 begin
@@ -1026,6 +1038,7 @@ inherited Create;
 fState := psUninitialized;
 fMemory := nil;
 fNVMemory := nil;
+fOnSynchronization := EndSynchronization;
 end;
 
 //------------------------------------------------------------------------------
@@ -1044,6 +1057,7 @@ Finalize;
 fMemory := TSVCMemory.Create(MemorySize);
 fNVMemory := TSVCMemory.Create(NVMemorySize);
 // initialize state
+fState := psInitialized;
 Reset;
 end;
 
@@ -1069,6 +1083,7 @@ Initialize(ProgramObject.MemorySize,ProgramObject.NVMemorySize);
 // initialize stack limit
 fRegisters.GP[REG_SL].Native := TSVCNative(TSVCComp(ProgramObject.MemorySize) -
                                            TSVCComp(ProgramObject.StackSize));
+fInitialStackLimit := fRegisters.GP[REG_SL].Native;
 // load program
 If ProgramObject.ProgramSize <= ProgramObject.MemorySize then
   Move(ProgramObject.ProgramData^,fMemory.Memory^,ProgramObject.ProgramSize)
@@ -1090,7 +1105,6 @@ For i := 0 to Pred(ProgramObject.VariableInitCount) do
         Inc(Temp);
       end
   end;
-
 end;
 
 //------------------------------------------------------------------------------
@@ -1110,43 +1124,49 @@ procedure TSVCProcessor.Restart;
 var
   i:  Integer;
 begin
-fExecutionCount := 0;
-fFaultClass := '';
-fFaultMessage := '';
-// initialize state
-FillChar(fRegisters,SizeOf(fRegisters),0);
-For i := Low(fPorts) to High(fPorts) do
-  fPorts[i].Data := 0;
-InvalidateInstructionData;
-fCurrentInstruction.PrevPrefixes := [];
-// init stack
-fRegisters.GP[REG_SL].Native := 0;
-If fMemory.Size > TMemSize(High(TSVCNative)) then
-  fRegisters.GP[REG_SB].Native := High(TSVCNative)
-else
-  fRegisters.GP[REG_SB].Native := TSVCNative(fMemory.Size);
-fRegisters.GP[REG_SP].Native := fRegisters.GP[REG_SB].Native;
-// init special registers
-fRegisters.IP    := SVC_REG_INITVAL_IP;
-fRegisters.FLAGS := SVC_REG_INITVAL_FLAGS;
-fRegisters.CNTR  := SVC_REG_INITVAL_CNTR;
-fRegisters.CR    := SVC_REG_INITVAL_CR;
-// init state
-fState := psRunning;
+If State <> psUninitialized then
+  begin
+    fExecutionCount := 0;
+    fFaultClass := '';
+    fFaultMessage := '';
+    // initialize state
+    FillChar(fRegisters,SizeOf(fRegisters),0);
+    For i := Low(fPorts) to High(fPorts) do
+      fPorts[i].Data := 0;
+    InvalidateInstructionData;
+    fCurrentInstruction.PrevPrefixes := [];
+    // init stack
+    fRegisters.GP[REG_SL].Native := fInitialStackLimit;
+    If fMemory.Size > TMemSize(High(TSVCNative)) then
+      fRegisters.GP[REG_SB].Native := High(TSVCNative)
+    else
+      fRegisters.GP[REG_SB].Native := TSVCNative(fMemory.Size);
+    fRegisters.GP[REG_SP].Native := fRegisters.GP[REG_SB].Native;
+    // init special registers
+    fRegisters.IP    := SVC_REG_INITVAL_IP;
+    fRegisters.FLAGS := SVC_REG_INITVAL_FLAGS;
+    fRegisters.CNTR  := SVC_REG_INITVAL_CNTR;
+    fRegisters.CR    := SVC_REG_INITVAL_CR;
+    // init state
+    fState := psRunning;
+  end;
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TSVCProcessor.Reset;
 begin
-// clear ports events
-FillChar(fPorts,SizeOf(fPorts),0);
-// clear memory (don't touch NVmem)
-FillChar(fMemory.Memory^,fMemory.Size,0);
-// init interrupt handlers
-FillChar(fInterruptHandlers,SizeOf(fInterruptHandlers),0);
-// init state
-Restart;
+If State <> psUninitialized then
+  begin
+    // clear ports
+    FillChar(fPorts,SizeOf(fPorts),0);
+    // clear memory (don't touch NVmem)
+    FillChar(fMemory.Memory^,fMemory.Size,0);
+    // init interrupt handlers
+    FillChar(fInterruptHandlers,SizeOf(fInterruptHandlers),0);
+    // init state
+    Restart;
+  end;
 end;
 
 //------------------------------------------------------------------------------
@@ -1155,19 +1175,20 @@ procedure TSVCProcessor.ExecuteInstruction(InstructionWindow: TSVCInstructionWin
 var
   InstrPtr: TSVCNative;
 begin
-try
-  InstrPtr := fRegisters.IP;
+If State <> psUninitialized then
   try
-    fCurrentInstruction.StartAddress := fRegisters.IP;
-    fCurrentInstruction.Window := InstructionWindow;  // fetch
-    InstructionIssue;
-  finally
-    If not AffectIP then
-      fRegisters.IP := InstrPtr;
+    InstrPtr := fRegisters.IP;
+    try
+      fCurrentInstruction.StartAddress := fRegisters.IP;
+      fCurrentInstruction.Window := InstructionWindow;  // fetch
+      InstructionIssue;
+    finally
+      If not AffectIP then
+        fRegisters.IP := InstrPtr;
+    end;
+  except
+    on E: Exception do HandleException(E);
   end;
-except
-  on E: Exception do HandleException(E);
-end;
 end;
 
 //------------------------------------------------------------------------------
@@ -1188,7 +1209,7 @@ else
       ExecuteNextInstruction;
       Inc(Result);
     end;
-If fState = psReleased then
+If fState in [psReleased,psSynchronizing] then
   fState := psRunning;
 end;
 
@@ -1196,7 +1217,7 @@ end;
 
 procedure TSVCProcessor.InterruptRequest(InterruptIndex: TSVCInterruptIndex; Data: TSVCNative = 0);
 begin
-If IsIRQInterrupt(InterruptIndex) then
+If (State <> psUninitialized) and IsIRQInterrupt(InterruptIndex) then
   begin
     DispatchInterrupt(InterruptIndex,Data);
     If fState = psWaiting then

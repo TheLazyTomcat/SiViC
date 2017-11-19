@@ -87,6 +87,8 @@ type
     procedure SaveStruct_00000000(Stream: TStream); virtual;
     procedure LoadStruct_00000000(Stream: TStream); virtual;
   public
+    class Function IsProgram(Stream: TStream): Boolean; overload; virtual;
+    class Function IsProgram(const FileName: String): Boolean; overload; virtual;
     constructor Create;
     destructor Destroy; override;
     Function AddVariableInit(Address: TSVCNative; Data: TSVCByteArray): Integer; virtual;
@@ -185,6 +187,27 @@ For i := 0 to Pred(Integer(Stream_ReadUInt32(Stream))) do
 end;
 
 //==============================================================================
+
+class Function TSVCProgram.IsProgram(Stream: TStream): Boolean;
+begin
+Result := Stream_ReadUInt32(Stream,False) = SVC_PROGRAM_SVCFILE_SIGNATURE;
+end;
+
+//------------------------------------------------------------------------------
+
+class Function TSVCProgram.IsProgram(const FileName: String): Boolean;
+var
+  FileStream: TFileStream;
+begin
+FileStream := TFileStream.Create(StrToRTL(FileName),fmOpenRead or fmShareDenyWrite);
+try
+  Result := IsProgram(FileStream);
+finally
+  FileStream.Free;
+end;
+end;
+
+//------------------------------------------------------------------------------
 
 constructor TSVCProgram.Create;
 begin

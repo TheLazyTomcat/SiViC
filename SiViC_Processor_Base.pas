@@ -283,6 +283,8 @@ procedure TSVCProcessor_Base.Instruction_03;   // SYNC
 begin
 ArgumentsDecode(False,[]);
 fState := psSynchronizing;
+If Assigned(fOnSynchronization) then
+  fOnSynchronization(Self);
 end;
 
 //------------------------------------------------------------------------------
