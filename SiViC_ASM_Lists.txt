@@ -1215,6 +1215,7 @@ C, P, Z, S, O, D, I
   SVC_REG_CR_INCDECCARRY                       |     0x0001  |  CR bitmask - INC and DEC are affecting carry flag
   SVC_REG_CR_FASTSTRING                        |     0x0002  |  CR bitmask - optimized string instructions (MOVS*, STOS*)
   SVC_REG_CR_UNHINTERROR                       |     0x0004  |  CR bitmask - call to unhandled interupt causes an error
+  SVC_REG_CR_PORTERRORS                        |     0x0008  |  CR bitmask - accessing port wih no connected device causes an error
 #------------------------------------------------------------------------------------------------------------------------------
   SVC_INT_IDX_MAXEXC                           |         31  |  Highest exception interrupt index
   SVC_INT_IDX_MINIRQ                           |         32  |  Lowest IRQ interrupt index

@@ -795,12 +795,8 @@ end;
 procedure TSVCProcessor_Base.Instruction_35;   // IN         reg8,   imm8
 begin
 ArgumentsDecode(False,[iatREG8,iatIMM8]);
-If DeviceConnected(GetArgVal(1)) then
-  begin
-    PortRequested(TSVCPortIndex(GetArgVal(1)));
-    TSVCByte(GetArgPtr(0)^) := TSVCByte(fPorts[TSVCPortIndex(GetArgVal(1))].Data);
-  end
-else raise ESVCInterruptException.Create(SVC_EXCEPTION_DEVICENOTAVAILABLE,GetArgVal(1));
+PortRequested(TSVCPortIndex(GetArgVal(1)));
+TSVCByte(GetArgPtr(0)^) := TSVCByte(fPorts[TSVCPortIndex(GetArgVal(1))].Data);
 end;
 
 //------------------------------------------------------------------------------
@@ -808,12 +804,8 @@ end;
 procedure TSVCProcessor_Base.Instruction_36;   // IN         reg16,  imm8
 begin
 ArgumentsDecode(False,[iatREG16,iatIMM8]);
-If DeviceConnected(GetArgVal(1)) then
-  begin
-    PortRequested(TSVCPortIndex(GetArgVal(1)));
-    TSVCWord(GetArgPtr(0)^) := TSVCWord(fPorts[TSVCPortIndex(GetArgVal(1))].Data);
-  end
-else raise ESVCInterruptException.Create(SVC_EXCEPTION_DEVICENOTAVAILABLE,GetArgVal(1));
+PortRequested(TSVCPortIndex(GetArgVal(1)));
+TSVCWord(GetArgPtr(0)^) := TSVCWord(fPorts[TSVCPortIndex(GetArgVal(1))].Data);
 end;
 
 //------------------------------------------------------------------------------
@@ -821,12 +813,8 @@ end;
 procedure TSVCProcessor_Base.Instruction_37;   // IN         reg8,   reg8
 begin
 ArgumentsDecode(False,[iatREG8,iatREG8]);
-If DeviceConnected(GetArgVal(1)) then
-  begin
-    PortRequested(TSVCPortIndex(GetArgVal(1)));
-    TSVCByte(GetArgPtr(0)^) := TSVCByte(fPorts[TSVCPortIndex(GetArgVal(1))].Data);
-  end
-else raise ESVCInterruptException.Create(SVC_EXCEPTION_DEVICENOTAVAILABLE,GetArgVal(1));
+PortRequested(TSVCPortIndex(GetArgVal(1)));
+TSVCByte(GetArgPtr(0)^) := TSVCByte(fPorts[TSVCPortIndex(GetArgVal(1))].Data);
 end;
 
 //------------------------------------------------------------------------------
@@ -834,12 +822,8 @@ end;
 procedure TSVCProcessor_Base.Instruction_38;   // IN         reg16,  reg8
 begin
 ArgumentsDecode(False,[iatREG16,iatREG8]);
-If DeviceConnected(GetArgVal(1)) then
-  begin
-    PortRequested(TSVCPortIndex(GetArgVal(1)));
-    TSVCWord(GetArgPtr(0)^) := TSVCWord(fPorts[TSVCPortIndex(GetArgVal(1))].Data);
-  end
-else raise ESVCInterruptException.Create(SVC_EXCEPTION_DEVICENOTAVAILABLE,GetArgVal(1));
+PortRequested(TSVCPortIndex(GetArgVal(1)));
+TSVCWord(GetArgPtr(0)^) := TSVCWord(fPorts[TSVCPortIndex(GetArgVal(1))].Data);
 end;
 
 //------------------------------------------------------------------------------
@@ -847,12 +831,8 @@ end;
 procedure TSVCProcessor_Base.Instruction_39;   // OUT        imm8,   reg8
 begin
 ArgumentsDecode(False,[iatIMM8,iatREG8]);
-If DeviceConnected(GetArgVal(0)) then
-  begin
-    fPorts[TSVCPortIndex(GetArgVal(0))].Data := TSVCByte(GetArgVal(1));
-    PortUpdated(TSVCPortIndex(GetArgVal(0)));
-  end
-else raise ESVCInterruptException.Create(SVC_EXCEPTION_DEVICENOTAVAILABLE,GetArgVal(0));
+fPorts[TSVCPortIndex(GetArgVal(0))].Data := TSVCByte(GetArgVal(1));
+PortUpdated(TSVCPortIndex(GetArgVal(0)));
 end;
 
 //------------------------------------------------------------------------------
@@ -860,12 +840,8 @@ end;
 procedure TSVCProcessor_Base.Instruction_3A;   // OUT        imm8,   reg16
 begin
 ArgumentsDecode(False,[iatIMM8,iatREG16]);
-If DeviceConnected(GetArgVal(0)) then
-  begin
-    fPorts[TSVCPortIndex(GetArgVal(0))].Data := TSVCWord(GetArgVal(1));
-    PortUpdated(TSVCPortIndex(GetArgVal(0)));
-  end
-else raise ESVCInterruptException.Create(SVC_EXCEPTION_DEVICENOTAVAILABLE,GetArgVal(0));
+fPorts[TSVCPortIndex(GetArgVal(0))].Data := TSVCWord(GetArgVal(1));
+PortUpdated(TSVCPortIndex(GetArgVal(0)));
 end;
 
 //------------------------------------------------------------------------------
@@ -873,12 +849,8 @@ end;
 procedure TSVCProcessor_Base.Instruction_3B;   // OUT        reg8,   reg8
 begin
 ArgumentsDecode(False,[iatREG8,iatREG8]);
-If DeviceConnected(GetArgVal(0)) then
-  begin
-    fPorts[TSVCPortIndex(GetArgVal(0))].Data := TSVCByte(GetArgVal(1));
-    PortUpdated(TSVCPortIndex(GetArgVal(0)));
-  end
-else raise ESVCInterruptException.Create(SVC_EXCEPTION_DEVICENOTAVAILABLE,GetArgVal(0));
+fPorts[TSVCPortIndex(GetArgVal(0))].Data := TSVCByte(GetArgVal(1));
+PortUpdated(TSVCPortIndex(GetArgVal(0)));
 end;
 
 //------------------------------------------------------------------------------
@@ -886,12 +858,8 @@ end;
 procedure TSVCProcessor_Base.Instruction_3C;   // OUT        reg8,   reg16
 begin
 ArgumentsDecode(False,[iatREG8,iatREG16]);
-If DeviceConnected(GetArgVal(0)) then
-  begin
-    fPorts[TSVCPortIndex(GetArgVal(0))].Data := TSVCWord(GetArgVal(1));
-    PortUpdated(TSVCPortIndex(GetArgVal(0)));
-  end
-else raise ESVCInterruptException.Create(SVC_EXCEPTION_DEVICENOTAVAILABLE,GetArgVal(0));
+fPorts[TSVCPortIndex(GetArgVal(0))].Data := TSVCWord(GetArgVal(1));
+PortUpdated(TSVCPortIndex(GetArgVal(0)));
 end;
 
 //------------------------------------------------------------------------------

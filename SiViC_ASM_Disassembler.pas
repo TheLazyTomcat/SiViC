@@ -18,6 +18,8 @@ type
     HexStr:       String;
     InstrLength:  Integer;
     WindowMap:    TSVCUnparserWindowMap;
+    LineInfo:     TSVCUnparserLineInfos;
+    UserData:     TSVCNative;
   end;
 
   TSVCDisassemblerDisassembledLines = record
@@ -30,23 +32,26 @@ type
     fUnparser:          TSVCUnparser;
     fDisassembledLines: TSVCDisassemblerDisassembledLines;
     Function GetDisassembledLine(Index: Integer): TSVCDisassemblerDisassembledLine;
+    Function GetUserData(Index: Integer): TSVCNative;
+    procedure SetUserData(Index: Integer; Value: TSVCNative);
   protected
     Function IndexForAddition(Address: TSVCNative): Integer; virtual;
-    procedure SequentialAdd(Address: TSVCNative; const Str, HexStr: String; InstrLength: Integer; WindowMap: TSVCUnparserWindowMap); virtual;
+    procedure SequentialAdd(Address: TSVCNative; const Str, HexStr: String; InstrLength: Integer; WindowMap: TSVCUnparserWindowMap; LineInfo: TSVCUnparserLineInfos); virtual;
   public
     constructor Create(Lists: TSVCListManager = nil);
     destructor Destroy; override;
     Function IndexOfDisassembledLine(Address: TSVCNative): Integer; virtual;
-    Function AddDisassembledLine(Address: TSVCNative; const Str, HexStr: String; InstrLength: Integer; WindowMap: TSVCUnparserWindowMap): Integer; virtual;
+    Function AddDisassembledLine(Address: TSVCNative; const Str, HexStr: String; InstrLength: Integer; WindowMap: TSVCUnparserWindowMap; LineInfo: TSVCUnparserLineInfos): Integer; virtual;
     Function RemoveDisassembledLine(Address: TSVCNative): Integer; virtual;
     procedure DeleteDisassembledLine(Index: Integer); virtual;
     procedure ClearDisassembledLines(FreeMemory: Boolean = False); virtual;
     Function Disassemble(ProgramObject: TSVCProgram): Boolean; overload; virtual;
   {$IFDEF SVC_Debug}
     Function Disassemble(ProcessorObject: TSVCProcessor; Limit: TSVCComp = High(TSVCComp)): Boolean; overload; virtual;
-    Function DisassembleOneAtIP(ProcessorObject: TSVCProcessor): Boolean; virtual;
+    Function DisassembleOneAtIP(ProcessorObject: TSVCProcessor): Integer; virtual;
   {$ENDIF SVC_Debug}
     property DisassembledLines[Index: Integer]: TSVCDisassemblerDisassembledLine read GetDisassembledLine; default;
+    property AssignedUserData[Index: Integer]: TSVCNative read GetUserData write SetUserData;
   published
     property Unparser: TSVCUnparser read fUnparser;
     property DisassembledLineCount: Integer read fDisassembledLines.Count;
@@ -65,6 +70,26 @@ If (Index >= Low(fDisassembledLines.Arr)) and (Index < fDisassembledLines.Count)
   Result := fDisassembledLines.Arr[Index]
 else
   raise Exception.CreateFmt('TSVCDisassembler.GetDisassembledLine: Index (%d) out of bounds.',[Index]);
+end;
+ 
+//------------------------------------------------------------------------------
+
+Function TSVCDisassembler.GetUserData(Index: Integer): TSVCNative;
+begin
+If (Index >= Low(fDisassembledLines.Arr)) and (Index < fDisassembledLines.Count) then
+  Result := fDisassembledLines.Arr[Index].UserData
+else
+  raise Exception.CreateFmt('TSVCDisassembler.GetUserData: Index (%d) out of bounds.',[Index]);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCDisassembler.SetUserData(Index: Integer; Value: TSVCNative);
+begin
+If (Index >= Low(fDisassembledLines.Arr)) and (Index < fDisassembledLines.Count) then
+  fDisassembledLines.Arr[Index].UserData := Value
+else
+  raise Exception.CreateFmt('TSVCDisassembler.SetUserData: Index (%d) out of bounds.',[Index]);
 end;
 
 //==============================================================================
@@ -99,7 +124,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-procedure TSVCDisassembler.SequentialAdd(Address: TSVCNative; const Str, HexStr: String; InstrLength: Integer; WindowMap: TSVCUnparserWindowMap);
+procedure TSVCDisassembler.SequentialAdd(Address: TSVCNative; const Str, HexStr: String; InstrLength: Integer; WindowMap: TSVCUnparserWindowMap; LineInfo: TSVCUnparserLineInfos);
 begin
 If fDisassembledLines.Count >= Length(fDisassembledLines.Arr) then
   SetLength(fDisassembledLines.Arr,Length(fDisassembledLines.Arr) + 128);
@@ -108,6 +133,7 @@ fDisassembledLines.Arr[fDisassembledLines.Count].Str := Str;
 fDisassembledLines.Arr[fDisassembledLines.Count].HexStr := HexStr;
 fDisassembledLines.Arr[fDisassembledLines.Count].InstrLength := InstrLength;
 fDisassembledLines.Arr[fDisassembledLines.Count].WindowMap := WindowMap;
+fDisassembledLines.Arr[fDisassembledLines.Count].LineInfo := LineInfo;
 Inc(fDisassembledLines.Count);
 end;
 
@@ -160,7 +186,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function TSVCDisassembler.AddDisassembledLine(Address: TSVCNative; const Str, HexStr: String; InstrLength: Integer; WindowMap: TSVCUnparserWindowMap): Integer;
+Function TSVCDisassembler.AddDisassembledLine(Address: TSVCNative; const Str, HexStr: String; InstrLength: Integer; WindowMap: TSVCUnparserWindowMap; LineInfo: TSVCUnparserLineInfos): Integer;
 var
   i:  Integer;
 begin
@@ -175,6 +201,7 @@ fDisassembledLines.Arr[Result].Str := Str;
 fDisassembledLines.Arr[Result].HexStr := HexStr;
 fDisassembledLines.Arr[Result].InstrLength := InstrLength;
 fDisassembledLines.Arr[Result].WindowMap := WindowMap;
+fDisassembledLines.Arr[Result].LineInfo := LineInfo;
 end;
 
 //------------------------------------------------------------------------------
@@ -236,7 +263,7 @@ while TMemSize(Offset) < ProgramObject.ProgramSize do
   begin
     FetchWindow;
     InstrLen := TSVCNative(fUnparser.Unparse(Window));
-    SequentialAdd(Offset,fUnparser.Line,fUnparser.HexLine,InstrLen,fUnparser.InstructionWindowMap);
+    SequentialAdd(Offset,fUnparser.Line,fUnparser.HexLine,InstrLen,fUnparser.InstructionWindowMap,fUnparser.LineInfo);
     If InstrLen <= 0 then
       begin
         Result := False;
@@ -247,6 +274,8 @@ while TMemSize(Offset) < ProgramObject.ProgramSize do
 end;
 
 //------------------------------------------------------------------------------
+
+{$IFDEF SVC_Debug}
 
 Function TSVCDisassembler.Disassemble(ProcessorObject: TSVCProcessor; Limit: TSVCComp = High(TSVCComp)): Boolean;
 var
@@ -261,7 +290,7 @@ while (TMemSize(Offset) < ProcessorObject.Memory.Size) and (TSVCComp(Offset) < L
   begin
     ProcessorObject.Memory.FetchMemoryArea(Offset,Length(Window.Data),Window.Data);
     InstrLen := TSVCNative(fUnparser.Unparse(Window));
-    SequentialAdd(Offset,fUnparser.Line,fUnparser.HexLine,InstrLen,fUnparser.InstructionWindowMap);
+    SequentialAdd(Offset,fUnparser.Line,fUnparser.HexLine,InstrLen,fUnparser.InstructionWindowMap,fUnparser.LineInfo);
     If InstrLen <= 0 then
       begin
         Result := False;
@@ -273,7 +302,7 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function TSVCDisassembler.DisassembleOneAtIP(ProcessorObject: TSVCProcessor): Boolean;
+Function TSVCDisassembler.DisassembleOneAtIP(ProcessorObject: TSVCProcessor): Integer;
 var
   InstrLen: Integer;
   Window:   TSVCInstructionWindow;
@@ -282,10 +311,11 @@ If TMemSize(ProcessorObject.Registers.IP) < ProcessorObject.Memory.Size then
   begin
     ProcessorObject.Memory.FetchMemoryArea(ProcessorObject.Registers.IP,Length(Window.Data),Window.Data);
     InstrLen := TSVCNative(fUnparser.Unparse(Window));
-    AddDisassembledLine(ProcessorObject.Registers.IP,fUnparser.Line,fUnparser.HexLine,InstrLen,fUnparser.InstructionWindowMap);
-    Result := InstrLen > 0;
+    Result := AddDisassembledLine(ProcessorObject.Registers.IP,fUnparser.Line,fUnparser.HexLine,InstrLen,fUnparser.InstructionWindowMap,fUnparser.LineInfo);
   end
-else Result := False;
+else Result := -1;
 end;
+
+{$ENDIF SVC_Debug}
 
 end.

@@ -58,6 +58,7 @@ const
   SVC_REG_CR_INCDECCARRY = $0001;  // INC and DEC are affecting carry flag
   SVC_REG_CR_FASTSTRING  = $0002;  // optimized string instructions (MOVS*, STOS*)
   SVC_REG_CR_UNHINTERROR = $0004;  // unhandled interupt causes an error
+  SVC_REG_CR_PORTERRORS  = $0008;  // raise error on access to port without connected device 
 
   // initial values for special registers
   SVC_REG_INITVAL_IP    = $0000;

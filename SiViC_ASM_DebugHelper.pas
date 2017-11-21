@@ -4,6 +4,8 @@ unit SiViC_ASM_DebugHelper;
 
 interface
 
+{$IFDEF SVC_Debug}
+
 uses
   Classes,
   SiViC_Common,
@@ -61,6 +63,8 @@ type
     property OnNVMemoryWrite: TSVCMemoryAccessEvent read fOnNVMemoryWrite write fOnNVMemoryWrite;
   end;
 
+{$ENDIF SVC_Debug}
+
 implementation
 
 const
@@ -69,6 +73,8 @@ const
   SVC_ACCESSMASK_MEMWRITE    = $0004;
   SVC_ACCESSMASK_NVMEMREAD   = $0008;
   SVC_ACCESSMASK_NVMEMWRITE  = $0010;
+
+{$IFDEF SVC_Debug}
 
 procedure TSVCDebugHelper.AfterInstructionHandler(Sender: TObject);
 begin
@@ -206,5 +212,7 @@ If Assigned(fOnNVMemoryWrite) and ((fAccessMask and SVC_ACCESSMASK_NVMEMWRITE) <
   fOnNVMemoryWrite(Self,fLastNVMemoryWrite);
 Initialize;
 end;
+
+{$ENDIF SVC_Debug}
 
 end.

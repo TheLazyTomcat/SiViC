@@ -16,12 +16,16 @@ type
 
   TSVCUnparserWindowMap = array[0..Pred(SVC_INS_WINDOWLENGTH)] of TSVCUnparserWindowMapItemType;
 
+  TSVCUnparserLineInfo = (uliPrefix,uliMemory,uliCondition);
+  TSVCUnparserLineInfos = set of TSVCUnparserLineInfo;
+
   TSVCUnparserData = record
     HexOnly:      Boolean;
     SplitHexLine: Boolean;
     Window:       TSVCInstructionWindow;
     WindowMap:    TSVCUnparserWindowMap;
     WindowMapPos: Integer;
+    LineInfo:     TSVCUnparserLineInfos;
     Line:         String;
     HexLine:      String; 
     OpCode:       TSVCByteArray;
@@ -57,6 +61,7 @@ type
     property SplitHexLine: Boolean read fUnparserData.SplitHexLine write fUnparserData.SplitHexLine;
     property Line: String read fUnparserData.Line;
     property HexLine: String read fUnparserData.HexLine;
+    property LineInfo: TSVCUnparserLineInfos read fUnparserData.LineInfo;
   end;
 
 implementation
@@ -138,6 +143,7 @@ case fUnparserData.Window.Data[fUnparserData.Window.Position] of
   $E0..
   $FF:  begin // prefix
           AppendToHexLine(fUnparserData.Window.Data[fUnparserData.Window.Position],wmitPrefix,True);
+          Include(fUnparserData.LineInfo,uliPrefix);
           If not fUnparserData.HexOnly then
             begin
               Index := fLists.IndexOfPrefix(TSVCInstructionPrefix(
@@ -182,6 +188,10 @@ If fUnparserData.InstrIdx >= 0 then
               fUnparserData.Window.Data[fUnparserData.Window.Position]));
             CondCode := ExtractconditionCode(TSVCInstructionSuffix(
               fUnparserData.Window.Data[fUnparserData.Window.Position]));
+            If CCSuffix then
+              Include(fUnparserData.LineInfo,uliCondition);
+            If MemSuffix then
+              Include(fUnparserData.LineInfo,uliMemory);              
             fStage := usSuffix;
           end
         else
@@ -474,6 +484,7 @@ fUnparserData.Window.Position := Low(fUnparserData.Window.Data);
 For i := Low(TSVCUnparserWindowMap) to High(TSVCUnparserWindowMap) do
   fUnparserData.WindowMap[i] := wmitNone;
 fUnparserData.WindowMapPos := 0;
+fUnparserData.LineInfo := [];
 fUnparserData.Line := '';
 fUnparserData.HexLine := '';
 SetLength(fUnparserData.OpCode,0);

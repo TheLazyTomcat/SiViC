@@ -17,6 +17,13 @@ uses
   SiViC_Program;
 
 type
+{$IFDEF SVC_Debug}
+  TSVCProcessorBreakPoints = record
+    Arr:    array of TSVCNative;
+    Count:  Integer;
+  end;
+{$ENDIF SVC_Debug}
+
   TSVCProcessorState = (psUninitialized,psInitialized,psRunning,psHalted,
                         psReleased,psWaiting,psSynchronizing,psFailed);
 
@@ -32,12 +39,14 @@ type
     fFaultClass:          String;
     fFaultMessage:        String;
   {$IFDEF SVC_Debug}
+    fBreakPoints:         TSVCProcessorBreakPoints;
     fOnBeforeInstruction: TNotifyEvent;
     fOnAfterInstruction:  TNotifyEvent;
     fOnMemoryRead:        TSVCMemoryAccessEvent;
     fOnMemoryWrite:       TSVCMemoryAccessEvent;
     fOnNVMemoryRead:      TSVCMemoryAccessEvent;
     fOnNVMemoryWrite:     TSVCMemoryAccessEvent;
+    Function GetBreakPoint(Index: Integer): TSVCNative;
   {$ENDIF SVC_Debug}
   protected
     fExecutionCount:      UInt64;
@@ -96,7 +105,6 @@ type
     procedure HandleException(E: Exception); virtual;
     procedure DispatchInterrupt(InterruptIndex: TSVCInterruptIndex; Data: TSVCNative = 0); virtual;
     // IO, hardware
-    Function DeviceConnected(PortIndex: TSVCPortIndex): Boolean; virtual;
     procedure PortUpdated(PortIndex: TSVCPortIndex); virtual;
     procedure PortRequested(PortIndex: TSVCPortIndex); virtual;
     // instruction window access
@@ -139,16 +147,24 @@ type
     procedure ExecuteInstruction(InstructionWindow: TSVCInstructionWindow; AffectIP: Boolean = False); virtual;
     Function Run(InstructionCount: Integer = 1): Integer; virtual;
     procedure InterruptRequest(InterruptIndex: TSVCInterruptIndex; Data: TSVCNative = 0); virtual;
+    Function DeviceConnected(PortIndex: TSVCPortIndex): Boolean; virtual;
     procedure ConnectDevice(PortIndex: TSVCPortIndex; InHandler,OutHandler: TSVCPortEvent); virtual;
     Function SaveNVMemory(const FileName: String): Boolean; virtual;
     Function LoadNVMemory(const FileName: String): Boolean; virtual;
   {$IFDEF SVC_Debug}
     // for debugging purposes...
+    Function IndexOfBreakPoint(Address: TSVCNative): Integer; virtual;
+    Function AddBreakPoint(Address: TSVCNative): Integer; virtual;
+    Function RemoveBreakPoint(Address: TSVCNative): Integer; virtual;
+    procedure DeleteBreakPoint(Index: Integer); virtual;
+    procedure ClearBreakPoints; virtual;
     property Memory: TSVCMemory read fMemory;
     property NVMemory: TSVCMemory read fNVMemory;
     property Registers: TSVCRegisters read fRegisters;
     property InterruptHandlers: TSVCInterruptHandlers read fInterruptHandlers;
     property Ports: TSVCPorts read fPorts;
+    property BreakPointCount: Integer read fBreakPoints.Count;
+    property BreakPiints[Index: Integer]: TSVCNative read GetBreakPoint;
   {$ENDIF SVC_Debug}
   published
     property State: TSVCProcessorState read fState;
@@ -167,6 +183,20 @@ type
   end;
 
 implementation
+
+{$IFDEF SVC_Debug}
+
+Function TSVCProcessor.GetBreakPoint(Index: Integer): TSVCNative;
+begin
+If (Index >= Low(fBreakPoints.Arr)) and (Index < fBreakPoints.Count) then
+  Result := fBreakPoints.Arr[Index]
+else
+  raise Exception.CreateFmt('TSVCProcessor.GetBreakPoint: Index (%d) out of bounds.',[Index]);
+end;
+
+{$ENDIF SVC_Debug}
+
+//==============================================================================
 
 procedure TSVCProcessor.EndSynchronization(Sender: TObject);
 begin
@@ -619,19 +649,13 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function TSVCProcessor.DeviceConnected(PortIndex: TSVCPortIndex): Boolean;
-begin
-Result := Assigned(fPorts[PortIndex].OutHandler) and Assigned(fPorts[PortIndex].InHandler);
-end;
-
-//------------------------------------------------------------------------------
-
 procedure TSVCProcessor.PortUpdated(PortIndex: TSVCPortIndex);
 begin
 If Assigned(fPorts[PortIndex].OutHandler) then
   fPorts[PortIndex].OutHandler(Self,PortIndex,fPorts[PortIndex].Data)
 else
-  raise ESVCInterruptException.Create(SVC_EXCEPTION_DEVICENOTAVAILABLE,TSVCNative(PortIndex));
+  If GetCRFlag(SVC_REG_CR_PORTERRORS) then
+    raise ESVCInterruptException.Create(SVC_EXCEPTION_DEVICENOTAVAILABLE,TSVCNative(PortIndex));
 end;
 
 //------------------------------------------------------------------------------
@@ -641,7 +665,8 @@ begin
 If Assigned(fPorts[PortIndex].InHandler) then
   fPorts[PortIndex].InHandler(Self,PortIndex,fPorts[PortIndex].Data)
 else
-   raise ESVCInterruptException.Create(SVC_EXCEPTION_DEVICENOTAVAILABLE,TSVCNative(PortIndex));
+  If GetCRFlag(SVC_REG_CR_PORTERRORS) then
+    raise ESVCInterruptException.Create(SVC_EXCEPTION_DEVICENOTAVAILABLE,TSVCNative(PortIndex));
 end;
 
 //------------------------------------------------------------------------------
@@ -738,12 +763,21 @@ end;
 
 procedure TSVCProcessor.ExecuteNextInstruction;
 begin
-try
-  InstructionFetch;
-  InstructionIssue;
-except
-  on E: Exception do HandleException(E);
-end;
+{$IFDEF SVC_Debug}
+If IndexOfBreakPoint(fRegisters.IP) >= 0 then
+  fState := psReleased
+else
+{$ENDIF SVC_Debug}
+  try
+    try
+      InstructionFetch;
+      InstructionIssue;
+    except
+      on E: Exception do HandleException(E);
+    end;
+  finally
+    InvalidateInstructionData;
+  end;
 end;
 
 //------------------------------------------------------------------------------
@@ -767,11 +801,9 @@ If Assigned(fOnBeforeInstruction) then
 {$ENDIF SVC_Debug}
 InstructionDecode;
 If Assigned(fCurrentInstruction.InstructionHandler) then
-  try
+  begin
     InstructionExecute;
     fCurrentInstruction.PrevPrefixes := fCurrentInstruction.Prefixes;
-  finally
-    InvalidateInstructionData;
   end
 else raise ESVCInterruptException.Create(SVC_EXCEPTION_INVALIDINSTRUCTION);
 Inc(fExecutionCount);
@@ -974,7 +1006,6 @@ If IsValidCurrWndPos then
       $E0.. // prefixes
       $FF:  begin
               PrefixSelect(fCurrentInstruction.Instruction[Pred(InstructionLength)]);
-              Inc(fCurrentInstruction.Window.Position);
               InstructionDecode(SelectMethod,InstructionLength);
             end
     else
@@ -1227,6 +1258,13 @@ end;
 
 //------------------------------------------------------------------------------
 
+Function TSVCProcessor.DeviceConnected(PortIndex: TSVCPortIndex): Boolean;
+begin
+Result := Assigned(fPorts[PortIndex].OutHandler) and Assigned(fPorts[PortIndex].InHandler);
+end;
+
+//------------------------------------------------------------------------------
+
 procedure TSVCProcessor.ConnectDevice(PortIndex: TSVCPortIndex; InHandler,OutHandler: TSVCPortEvent);
 begin
 fPorts[PortIndex].InHandler := InHandler;
@@ -1256,5 +1294,69 @@ If Assigned(fNVMemory) then
   end
 else Result := False;
 end;
+
+//------------------------------------------------------------------------------
+
+{$IFDEF SVC_Debug}
+
+Function TSVCProcessor.IndexOfBreakPoint(Address: TSVCNative): Integer;
+var
+  i:  Integer;
+begin
+For i := Low(fBreakPoints.Arr) to Pred(fBreakPoints.Count) do
+  If fBreakPoints.Arr[i] = Address then
+    begin
+      Result := i;
+      Break{For i};
+    end;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TSVCProcessor.AddBreakPoint(Address: TSVCNative): Integer;
+begin
+Result := IndexOfBreakPoint(Address);
+If Result < 0 then
+  begin
+    If fBreakPoints.Count >= Length(fBreakPoints.Arr) then
+      SetLength(fBreakPoints.Arr,Length(fBreakPoints.Arr) + 32);
+    Result := fBreakPoints.Count;
+    fBreakPoints.Arr[Result] := Address;
+    Inc(fBreakPoints.Count);  
+  end;
+end;
+
+//------------------------------------------------------------------------------
+
+Function TSVCProcessor.RemoveBreakPoint(Address: TSVCNative): Integer;
+begin
+Result := IndexOfBreakPoint(Address);
+If Result >= Low(fBreakPoints.Arr) then
+  DeleteBreakPoint(Result);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCProcessor.DeleteBreakPoint(Index: Integer);
+var
+  i:  Integer;
+begin
+If (Index >= Low(fBreakPoints.Arr)) and (Index < fBreakPoints.Count) then
+  begin
+    For i := Index to (fBreakPoints.Count - 2) do
+      fBreakPoints.Arr[i] := fBreakPoints.Arr[i + 1];
+    Dec(fBreakPoints.Count)
+  end
+else raise Exception.CreateFmt('TSVCProcessor.DeleteBreakPoint: Index (%d) out of bounds.',[Index]);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCProcessor.ClearBreakPoints;
+begin
+fBreakPoints.Count := 0;
+end;
+
+{$ENDIF SVC_Debug}    
 
 end.
