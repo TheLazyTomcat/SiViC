@@ -5,6 +5,7 @@ unit SiViC_Processor_Base;
 interface
 
 uses
+  AuxTypes,
   SiViC_Common,
   SiViC_Instructions,
   SiViC_Processor;
@@ -16,33 +17,20 @@ const
   SVC_PCS_INFOPAGE_CPU_ARCHITECTURE = $0001;
   SVC_PCS_INFOPAGE_CPU_REVISION     = $0002;
   // memory info
-  SVC_PCS_INFOPAGE_MEM_SIZE_W0      = $1000;
-  SVC_PCS_INFOPAGE_MEM_SIZE_W1      = $1001;
-  SVC_PCS_INFOPAGE_MEM_SIZE_W2      = $1002;
-  SVC_PCS_INFOPAGE_MEM_SIZE_W3      = $1003;
-  SVC_PCS_INFOPAGE_MEM_BASE_W0      = $1004;
-  SVC_PCS_INFOPAGE_MEM_BASE_W1      = $1005;
-  SVC_PCS_INFOPAGE_MEM_BASE_W2      = $1006;
-  SVC_PCS_INFOPAGE_MEM_BASE_W3      = $1007;
+  SVC_PCS_INFOPAGE_MEM_SIZE         = $1000;
+  SVC_PCS_INFOPAGE_MEM_BASE         = $1001;
   // NV memory info
-  SVC_PCS_INFOPAGE_MEM_NVSIZE_W0    = $2000;
-  SVC_PCS_INFOPAGE_MEM_NVSIZE_W1    = $2001;
-  SVC_PCS_INFOPAGE_MEM_NVSIZE_W2    = $2002;
-  SVC_PCS_INFOPAGE_MEM_NVSIZE_W3    = $2003;
-  SVC_PCS_INFOPAGE_MEM_NVBASE_W0    = $2004;
-  SVC_PCS_INFOPAGE_MEM_NVBASE_W1    = $2005;
-  SVC_PCS_INFOPAGE_MEM_NVBASE_W2    = $2006;
-  SVC_PCS_INFOPAGE_MEM_NVBASE_W3    = $2007;
+  SVC_PCS_INFOPAGE_MEM_NVSIZE       = $2000;
+  SVC_PCS_INFOPAGE_MEM_NVBASE       = $2001;
   // Counters, timers, clocks
-  SVC_PCS_INFOPAGE_CNTR_EXEC_W0     = $3000;
-  SVC_PCS_INFOPAGE_CNTR_EXEC_W1     = $3001;
-  SVC_PCS_INFOPAGE_CNTR_EXEC_W2     = $3002;
-  SVC_PCS_INFOPAGE_CNTR_EXEC_W3     = $3003;
+  SVC_PCS_INFOPAGE_CNTR_EXEC        = $3000;
+
 
 type
   TSVCProcessor_Base = class(TSVCProcessor)
   protected
     // processor info engine
+    Function PutIntoMemory(Address: TSVCNative; Value: UInt64): TSVCProcessorInfoData; virtual;
     Function GetInfoPage(Page: TSVCProcessorInfoPage; Param: TSVCProcessorInfoData): TSVCProcessorInfoData; override;
     // instruction decoding
     procedure PrefixSelect(Prefix: TSVCInstructionPrefix); override;
@@ -118,10 +106,27 @@ type
 implementation
 
 uses
-  AuxTypes,
   SiViC_Registers,
   SiViC_Interrupts,
   SiViC_IO;
+
+Function TSVCProcessor_Base.PutIntoMemory(Address: TSVCNative; Value: UInt64): TSVCProcessorInfoData;
+begin
+If Address <> 0 then
+  begin
+    If fMemory.IsValidArea(Address,SizeOf(UInt64)) then
+      begin
+        UInt64(fMemory.AddrPtr(Address)^) := UInt64(Value);
+      {$IFDEF SVC_Debug}
+        DoMemoryWriteEvent(Address);
+      {$ENDIF SVC_Debug}
+      end
+    else raise ESVCInterruptException.Create(SVC_EXCEPTION_MEMORYACCESS,Address);
+  end;
+Result := SizeOf(UInt64);
+end;
+
+//------------------------------------------------------------------------------
 
 Function TSVCProcessor_Base.GetInfoPage(Page: TSVCProcessorInfoPage; Param: TSVCProcessorInfoData): TSVCProcessorInfoData;
 begin
@@ -130,42 +135,13 @@ case Page of
   SVC_PCS_INFOPAGE_CPU_ARCHITECTURE:  Result := GetArchitecture;
   SVC_PCS_INFOPAGE_CPU_REVISION:      Result := GetRevision;
   // memory info
-  SVC_PCS_INFOPAGE_MEM_SIZE_W0:       Result := TSVCProcessorInfoData(fMemory.Size);
-  SVC_PCS_INFOPAGE_MEM_SIZE_W1:       Result := TSVCProcessorInfoData(fMemory.Size shr 16);
-  SVC_PCS_INFOPAGE_MEM_BASE_W0:       Result := TSVCProcessorInfoData({%H-}PtrUInt(fMemory.Memory));
-  SVC_PCS_INFOPAGE_MEM_BASE_W1:       Result := TSVCProcessorInfoData({%H-}PtrUInt(fMemory.Memory) shr 16);
-{$IFDEF 64bit}
-  SVC_PCS_INFOPAGE_MEM_SIZE_W2:       Result := TSVCProcessorInfoData(fMemory.Size shr 32);
-  SVC_PCS_INFOPAGE_MEM_SIZE_W3:       Result := TSVCProcessorInfoData(fMemory.Size shr 48);
-  SVC_PCS_INFOPAGE_MEM_BASE_W2:       Result := TSVCProcessorInfoData({%H-}PtrUInt(fMemory.Memory) shr 32);
-  SVC_PCS_INFOPAGE_MEM_BASE_W3:       Result := TSVCProcessorInfoData({%H-}PtrUInt(fMemory.Memory) shr 48);
-{$ELSE}
-  SVC_PCS_INFOPAGE_MEM_SIZE_W2:       Result := 0;
-  SVC_PCS_INFOPAGE_MEM_SIZE_W3:       Result := 0;
-  SVC_PCS_INFOPAGE_MEM_BASE_W2:       Result := 0;
-  SVC_PCS_INFOPAGE_MEM_BASE_W3:       Result := 0;
-{$ENDIF}
+  SVC_PCS_INFOPAGE_MEM_SIZE:          Result := PutIntoMemory(TSVCNative(Param),UInt64(fMemory.Size));
+  SVC_PCS_INFOPAGE_MEM_BASE:          Result := PutIntoMemory(TSVCNative(Param),UInt64({%H-}PtrUInt(fMemory.Memory)));
   // non-volatile memory info
-  SVC_PCS_INFOPAGE_MEM_NVSIZE_W0:     Result := TSVCProcessorInfoData(fNVMemory.Size);
-  SVC_PCS_INFOPAGE_MEM_NVSIZE_W1:     Result := TSVCProcessorInfoData(fNVMemory.Size shr 16);
-  SVC_PCS_INFOPAGE_MEM_NVBASE_W0:     Result := TSVCProcessorInfoData({%H-}PtrUInt(fNVMemory.Memory));
-  SVC_PCS_INFOPAGE_MEM_NVBASE_W1:     Result := TSVCProcessorInfoData({%H-}PtrUInt(fNVMemory.Memory) shr 16);
-{$IFDEF 64bit}
-  SVC_PCS_INFOPAGE_MEM_NVSIZE_W2:     Result := TSVCProcessorInfoData(fNVMemory.Size shr 32);
-  SVC_PCS_INFOPAGE_MEM_NVSIZE_W3:     Result := TSVCProcessorInfoData(fNVMemory.Size shr 48);
-  SVC_PCS_INFOPAGE_MEM_NVBASE_W2:     Result := TSVCProcessorInfoData({%H-}PtrUInt(fNVMemory.Memory) shr 32);
-  SVC_PCS_INFOPAGE_MEM_NVBASE_W3:     Result := TSVCProcessorInfoData({%H-}PtrUInt(fNVMemory.Memory) shr 48);
-{$ELSE}
-  SVC_PCS_INFOPAGE_MEM_NVSIZE_W2:     Result := 0;
-  SVC_PCS_INFOPAGE_MEM_NVSIZE_W3:     Result := 0;
-  SVC_PCS_INFOPAGE_MEM_NVBASE_W2:     Result := 0;
-  SVC_PCS_INFOPAGE_MEM_NVBASE_W3:     Result := 0;
-{$ENDIF}
+  SVC_PCS_INFOPAGE_MEM_NVSIZE:        Result := PutIntoMemory(TSVCNative(Param),UInt64(fNVMemory.Size));
+  SVC_PCS_INFOPAGE_MEM_NVBASE:        Result := PutIntoMemory(TSVCNative(Param),UInt64({%H-}PtrUInt(fNVMemory.Memory)));
   // Counters, timers, clocks
-  SVC_PCS_INFOPAGE_CNTR_EXEC_W0:      Result := TSVCProcessorInfoData(fExecutionCount);
-  SVC_PCS_INFOPAGE_CNTR_EXEC_W1:      Result := TSVCProcessorInfoData(fExecutionCount shr 16);
-  SVC_PCS_INFOPAGE_CNTR_EXEC_W2:      Result := TSVCProcessorInfoData(fExecutionCount shr 32);
-  SVC_PCS_INFOPAGE_CNTR_EXEC_W3:      Result := TSVCProcessorInfoData(fExecutionCount shr 48);
+  SVC_PCS_INFOPAGE_CNTR_EXEC:         Result := PutIntoMemory(TSVCNative(Param),UInt64(fExecutionCount));
 else
   Result := inherited GetInfoPage(Page,Param);
 end;

@@ -1267,27 +1267,12 @@ C, P, Z, S, O, D, I
   SVC_PCS_INFOPAGE_CPU_ARCHITECTURE            |     0x0001  |  Info page - architecture
   SVC_PCS_INFOPAGE_CPU_REVISION                |     0x0002  |  Info page - revision
 #- memory info - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  SVC_PCS_INFOPAGE_MEM_SIZE_W0                 |     0x1000  |  Info page - size of the memory, bits 00-15
-  SVC_PCS_INFOPAGE_MEM_SIZE_W1                 |     0x1001  |  Info page - size of the memory, bits 16-31
-  SVC_PCS_INFOPAGE_MEM_SIZE_W2                 |     0x1002  |  Info page - size of the memory, bits 32-47
-  SVC_PCS_INFOPAGE_MEM_SIZE_W3                 |     0x1003  |  Info page - size of the memory, bits 48-63
-  SVC_PCS_INFOPAGE_MEM_BASE_W0                 |     0x1004  |  Info page - real base address of the memory, bits 00-15
-  SVC_PCS_INFOPAGE_MEM_BASE_W1                 |     0x1005  |  Info page - real base address of the memory, bits 16-31
-  SVC_PCS_INFOPAGE_MEM_BASE_W2                 |     0x1006  |  Info page - real base address of the memory, bits 32-47
-  SVC_PCS_INFOPAGE_MEM_BASE_W3                 |     0x1007  |  Info page - real base address of the memory, bits 48-63
+  SVC_PCS_INFOPAGE_MEM_SIZE                    |     0x1000  |  Info page - size of the memory
+  SVC_PCS_INFOPAGE_MEM_BASE                    |     0x1001  |  Info page - real base address of the memory
 #- NV memory info - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  SVC_PCS_INFOPAGE_MEM_NVSIZE_W0               |     0x2000  |  Info page - size of the non-volatile memory, bits 00-15
-  SVC_PCS_INFOPAGE_MEM_NVSIZE_W1               |     0x2001  |  Info page - size of the non-volatile memory, bits 16-31
-  SVC_PCS_INFOPAGE_MEM_NVSIZE_W2               |     0x2002  |  Info page - size of the non-volatile memory, bits 32-47
-  SVC_PCS_INFOPAGE_MEM_NVSIZE_W3               |     0x2003  |  Info page - size of the non-volatile memory, bits 48-63
-  SVC_PCS_INFOPAGE_MEM_NVBASE_W0               |     0x2004  |  Info page - real base address of the non-volatile memory, bits 00-15
-  SVC_PCS_INFOPAGE_MEM_NVBASE_W1               |     0x2005  |  Info page - real base address of the non-volatile memory, bits 16-31
-  SVC_PCS_INFOPAGE_MEM_NVBASE_W2               |     0x2006  |  Info page - real base address of the non-volatile memory, bits 32-47
-  SVC_PCS_INFOPAGE_MEM_NVBASE_W3               |     0x2007  |  Info page - real base address of the non-volatile memory, bits 48-63
+  SVC_PCS_INFOPAGE_MEM_NVSIZE                  |     0x2000  |  Info page - size of the non-volatile memory
+  SVC_PCS_INFOPAGE_MEM_NVBASE                  |     0x2001  |  Info page - real base address of the non-volatile memory
 #- counters, timers, clocks - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  SVC_PCS_INFOPAGE_CNTR_EXEC_W0                |     0x3000  |  Info page - execution counter, bits 00-15
-  SVC_PCS_INFOPAGE_CNTR_EXEC_W1                |     0x3001  |  Info page - execution counter, bits 16-31
-  SVC_PCS_INFOPAGE_CNTR_EXEC_W2                |     0x3002  |  Info page - execution counter, bits 32-47
-  SVC_PCS_INFOPAGE_CNTR_EXEC_W3                |     0x3003  |  Info page - execution counter, bits 48-63
+  SVC_PCS_INFOPAGE_CNTR_EXEC                   |     0x3000  |  Info page - execution counter
 #-----------------------------------------------------------------------------------------------------------------------------
 >

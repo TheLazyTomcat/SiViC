@@ -28,8 +28,8 @@ type
                         psReleased,psWaiting,psSynchronizing,psFailed);
 
   // processor (system) information
-  TSVCProcessorInfoPage = TSVCWord;
-  TSVCProcessorInfoData = TSVCWord;
+  TSVCProcessorInfoPage = TSVCNative;
+  TSVCProcessorInfoData = TSVCNative;
 
   TSVCInstructionSelectMethod = procedure(InstructionByte: TSVCByte) of object;
 
