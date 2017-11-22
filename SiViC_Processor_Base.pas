@@ -111,6 +111,8 @@ type
     procedure Instruction_3C; virtual;    // OUT        reg8,   reg16
     procedure Instruction_3D; virtual;    // INTSET     reg8,   imm16
     procedure Instruction_3E; virtual;    // INTSET     reg8,   reg16
+    procedure Instruction_3F; virtual;    // INTDEF     imm16
+    procedure Instruction_40; virtual;    // INTDEF     reg16
   end;
 
 implementation
@@ -248,6 +250,8 @@ case InstructionByte of
   $3C:  fCurrentInstruction.InstructionHandler := Instruction_3C;   // OUT        reg8,   reg16
   $3D:  fCurrentInstruction.InstructionHandler := Instruction_3D;   // INTSET     reg8,   imm16
   $3E:  fCurrentInstruction.InstructionHandler := Instruction_3E;   // INTSET     reg8,   reg16
+  $3F:  fCurrentInstruction.InstructionHandler := Instruction_3F;   // INTDEF     imm16
+  $40:  fCurrentInstruction.InstructionHandler := Instruction_40;   // INTDEF     reg16
 else
   inherited InstructionSelect_L1(InstructionByte);
 end;
@@ -876,6 +880,28 @@ procedure TSVCProcessor_Base.Instruction_3E;   // INTSET     reg8,   reg16
 begin
 ArgumentsDecode(False,[iatREG8,iatREG16]);
 fInterruptHandlers[TSVCInterruptIndex(GetArgVal(0))].HandlerAddr := GetArgVal(1);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCProcessor_Base.Instruction_3F;   // INTDEF     imm16
+var
+  i:  TSVCInterruptIndex;
+begin
+ArgumentsDecode(False,[iatIMM16]);
+For i := Low(fInterruptHandlers) to High(fInterruptHandlers) do
+  fInterruptHandlers[i].HandlerAddr := GetArgVal(0);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCProcessor_Base.Instruction_40;   // INTDEF     reg16
+var
+  i:  TSVCInterruptIndex;
+begin
+ArgumentsDecode(False,[iatREG16]);
+For i := Low(fInterruptHandlers) to High(fInterruptHandlers) do
+  fInterruptHandlers[i].HandlerAddr := GetArgVal(0);
 end;
 
 end.

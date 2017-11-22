@@ -1303,6 +1303,7 @@ Function TSVCProcessor.IndexOfBreakPoint(Address: TSVCNative): Integer;
 var
   i:  Integer;
 begin
+Result := -1;
 For i := Low(fBreakPoints.Arr) to Pred(fBreakPoints.Count) do
   If fBreakPoints.Arr[i] = Address then
     begin
