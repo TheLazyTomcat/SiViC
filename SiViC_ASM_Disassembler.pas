@@ -51,7 +51,7 @@ type
     Function DisassembleOneAtIP(ProcessorObject: TSVCProcessor): Integer; virtual;
   {$ENDIF SVC_Debug}
     property DisassembledLines[Index: Integer]: TSVCDisassemblerDisassembledLine read GetDisassembledLine; default;
-    property AssignedUserData[Index: Integer]: TSVCNative read GetUserData write SetUserData;
+    property UserData[Index: Integer]: TSVCNative read GetUserData write SetUserData;
   published
     property Unparser: TSVCUnparser read fUnparser;
     property DisassembledLineCount: Integer read fDisassembledLines.Count;
@@ -250,9 +250,9 @@ var
     If TMemSize(Offset + Length(Window.Data)) > ProgramObject.ProgramSize then
       begin
         FillChar(Window.Data,Length(Window.Data),0);
-        Move(Pointer(PtrUInt(ProgramObject.ProgramData) + PtrUInt(Offset))^,Window.Data,ProgramObject.ProgramSize - Offset);
+        Move({%H-}Pointer({%H-}PtrUInt(ProgramObject.ProgramData) + PtrUInt(Offset))^,Window.Data,ProgramObject.ProgramSize - Offset);
       end
-    else Move(Pointer(PtrUInt(ProgramObject.ProgramData) + PtrUInt(Offset))^,Window.Data,Length(Window.Data));
+    else Move({%H-}Pointer({%H-}PtrUInt(ProgramObject.ProgramData) + PtrUInt(Offset))^,Window.Data,Length(Window.Data));
   end;
 
 begin

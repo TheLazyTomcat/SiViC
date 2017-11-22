@@ -763,21 +763,20 @@ end;
 
 procedure TSVCProcessor.ExecuteNextInstruction;
 begin
+try
+  try
+    InstructionFetch;
+    InstructionIssue;
+  except
+    on E: Exception do HandleException(E);
+  end;
+finally
+  InvalidateInstructionData;
+end;
 {$IFDEF SVC_Debug}
 If IndexOfBreakPoint(fRegisters.IP) >= 0 then
-  fState := psReleased
-else
+  fState := psReleased;
 {$ENDIF SVC_Debug}
-  try
-    try
-      InstructionFetch;
-      InstructionIssue;
-    except
-      on E: Exception do HandleException(E);
-    end;
-  finally
-    InvalidateInstructionData;
-  end;
 end;
 
 //------------------------------------------------------------------------------
