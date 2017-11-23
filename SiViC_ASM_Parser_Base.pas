@@ -195,9 +195,9 @@ begin
 If Length(Identifier) > 0 then
   begin
     If Length(Identifier) = 1 then
-      Result := not CharInSet(Identifier[1],SVC_ASM_LEXER_CHARS_INVAL_1_IDENT)
+      Result := not SVC_CharInSet(Identifier[1],SVC_ASM_LEXER_CHARS_INVAL_1_IDENT)
     else
-      Result := CharInSet(Identifier[1],SVC_ASM_PARSER_CHARS_IDENTIFIERSTART);
+      Result := SVC_CharInSet(Identifier[1],SVC_ASM_PARSER_CHARS_IDENTIFIERSTART);
   end
 else Result := False;
 end;

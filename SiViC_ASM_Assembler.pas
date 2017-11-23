@@ -161,6 +161,8 @@ type
     Function AddAssemblerMessage(Item: TSVCAssemblerMessage): Integer; virtual;
     Function AddWarningMessage(const Text: String; Values: array of const): Integer; overload; virtual;
     Function AddWarningMessage(const Text: String): Integer; overload; virtual;
+    Function AddErrorMessage(const Text: String; Values: array of const; Fatal: Boolean = False): Integer; overload; virtual;
+    Function AddErrorMessage(const Text: String; Fatal: Boolean = False): Integer; overload; virtual;
     procedure LoadDefaultSystemValues; virtual;
     procedure LoadPredefinedConstants; virtual;
     procedure SortMessages; virtual;
@@ -514,7 +516,7 @@ If Index >= 0 then
     fConstants.Arr[Index].Size := vsNative;
     fConstants.Arr[Index].SrcLineIdx := fParsedLineIdx;
   end
-else raise ESVCAssemblerError.CreateFmt('System value %s does not have matching lo-word constant',[AnsiUpperCase(Identifier)]);
+else AddErrorMessage('System value %s does not have matching lo-word constant',[AnsiUpperCase(Identifier)],True);
 // high word
 Index := IndexOfConst(Identifier + SVC_ASM_ASSEMBLER_HIWORD_SUFFIX);
 If Index >= 0 then
@@ -523,7 +525,7 @@ If Index >= 0 then
     fConstants.Arr[Index].Size := vsNative;
     fConstants.Arr[Index].SrcLineIdx := fParsedLineIdx;
   end
-else raise ESVCAssemblerError.CreateFmt('System value %s does not have matching hi-word constant',[AnsiUpperCase(Identifier)]);
+else AddErrorMessage('System value %s does not have matching hi-word constant',[AnsiUpperCase(Identifier)],True);
 end;
 
 //------------------------------------------------------------------------------
@@ -567,6 +569,28 @@ end;
 Function TSVCAssembler.AddWarningMessage(const Text: String): Integer;
 begin
 Result := AddWarningMessage(Text,[]);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TSVCAssembler.AddErrorMessage(const Text: String; Values: array of const; Fatal: Boolean = False): Integer;
+var
+  TempMsg:  TSVCAssemblerMessage;
+begin
+TempMsg.MessageType := pmtError;
+TempMsg.Text := Format(Text,Values);
+TempMsg.LineIdx := fParsedLineIdx;
+TempMsg.Position := fParsedLinePos;
+Result := AddAssemblerMessage(TempMsg);
+If Fatal then
+  raise ESVCAssemblerError.CreateFmt(Text,Values);
+end;
+
+//------------------------------------------------------------------------------
+
+Function TSVCAssembler.AddErrorMessage(const Text: String; Fatal: Boolean = False): Integer;
+begin
+AddErrorMessage(Text,[],Fatal);
 end;
 
 //------------------------------------------------------------------------------
@@ -700,11 +724,11 @@ If fVariables.Count > 0 then
                               If (TSVCComp(fVariables.Arr[i].Address) + TSVCComp(fVariables.Arr[i].Size)) > CurrAddr then
                                 CurrAddr := TSVCComp(fVariables.Arr[i].Address) + TSVCComp(fVariables.Arr[i].Size);
                             end
-                          else raise ESVCAssemblerError.CreateFmt('Variable "%s" cannot fit into memory',[fVariables.Arr[i].Identifier]);
+                          else AddErrorMessage('Variable "%s" cannot fit into memory',[fVariables.Arr[i].Identifier]);
                         end
-                      else raise ESVCAssemblerError.Create('Reference address outside of a valid memory space');
+                      else AddErrorMessage('Reference address outside of a valid memory space');
                     end
-                  else raise ESVCAssemblerError.CreateFmt('Undeclared identifier "%s"',[fVariables.Arr[i].ReferenceIdentifier]);
+                  else AddErrorMessage('Undeclared identifier "%s"',[fVariables.Arr[i].ReferenceIdentifier]);
                 end
               else
                 begin
@@ -714,7 +738,7 @@ If fVariables.Count > 0 then
                       fVariables.Arr[i].Address := TSVCNative(CurrAddr);
                       CurrAddr := CurrAddr + TSVCComp(fVariables.Arr[i].Size);
                     end
-                  else raise ESVCAssemblerError.CreateFmt('Variable "%s" cannot fit into memory',[fVariables.Arr[i].Identifier]);
+                  else AddErrorMessage('Variable "%s" cannot fit into memory',[fVariables.Arr[i].Identifier]);
                 end;
               Temp.Identifier := fVariables.Arr[i].Identifier;
               Temp.Value := fVariables.Arr[i].Address;
@@ -727,7 +751,7 @@ If fVariables.Count > 0 then
         end;
       end
     // line index should be at the end by this point
-    else raise ESVCAssemblerError.Create('No memory available for variables');
+    else AddErrorMessage('No memory available for variables',True);
   end;
 end;
 
@@ -745,7 +769,7 @@ fParsedLinePos := 0;
 Index := CheckedIndexOfSys(SVC_PROGRAM_SYSVALNAME_STACKSIZE);
 fParsedLineIdx := fSystemValues.Arr[Index].SrcLineIdx;
 If fSystemValues.Arr[Index].Value >= TSVCComp(High(TSVCNative) + 1) then
-  raise ESVCAssemblerError.Create('Stack cannot fit into available memory')
+  AddErrorMessage('Stack cannot fit into available memory')
 else
   StackSize := fSystemValues.Arr[Index].Value;
 // check and rectify NVmem size
@@ -754,7 +778,7 @@ fParsedLineIdx := fSystemValues.Arr[Index].SrcLineIdx;
 If fSystemValues.Arr[Index].Value <= TSVCComp(High(TSVCNative) + 1) then
   fSystemValues.Arr[Index].Value := (fSystemValues.Arr[Index].Value + 255) and not TSVCComp($FF)
 else
-  raise ESVCAssemblerError.Create('Size of non-volatile memory is out of allowed range');
+  AddErrorMessage('Size of non-volatile memory is out of allowed range');
 // check mem size
 Index := CheckedIndexOfSys(SVC_PROGRAM_SYSVALNAME_MEMSIZE);
 fParsedLineIdx := fSystemValues.Arr[Index].SrcLineIdx;
@@ -765,14 +789,14 @@ If fSystemValues.Arr[Index].Value <= TSVCComp(High(TSVCNative) + 1) then
     else
       fSystemValues.Arr[Index].Value := (fSystemValues.Arr[Index].Value + $FF) and not TSVCComp($FF);
   end
-else raise ESVCAssemblerError.Create('Size of allocated memory is out of allowed range');
+else AddErrorMessage('Size of allocated memory is out of allowed range');
 MemSize := fSystemValues.Arr[Index].Value;
 // rectify memory size
 fParsedLineIdx := -1;
 If (TSVCComp(fMemTaken) + StackSize) > MemSize then
   MemSize := (TSVCComp(fMemTaken) + StackSize + $FF) and not TSVCComp($FF);
 If MemSize > TSVCComp(High(TSVCNative) + 1) then
-  raise ESVCAssemblerError.Create('Program cannot fit into available memory');
+  AddErrorMessage('Program cannot fit into available memory');
 fSystemValues.Arr[Index].Value := MemSize;
 AssignSysToConst(SVC_PROGRAM_SYSVALNAME_MEMSIZE,MemSize);
 end;
@@ -810,10 +834,10 @@ For i := Low(fAssemblerLines.Arr) to Pred(fAssemblerLines.Count) do
                     iatREL16: If not fParser.CheckRange(Value,vsWord) then
                                 AddWarningMessage('Memory offset out of allowed range for label "%s"',[Identifier]);
                   else
-                    raise ESVCAssemblerError.CreateFmt('Invalid value type for label "%s"',[Identifier]);
+                    AddErrorMessage('Invalid value type for label "%s"',[Identifier]);
                   end;
                 end
-              else raise ESVCAssemblerError.CreateFmt('Undeclared label "%s"',[Identifier]);
+              else AddErrorMessage('Undeclared label "%s"',[Identifier]);
             end
           else
             begin
@@ -843,7 +867,7 @@ For i := Low(fAssemblerLines.Arr) to Pred(fAssemblerLines.Count) do
                         iatIMM16: If not fParser.CheckRange(Value,vsWord) then
                                     AddWarningMessage('Address of variable "%s" out of alloved range for this argument',[Identifier]);
                       else
-                        raise ESVCAssemblerError.CreateFmt('Invalid value type for replacement "%s"',[Identifier]);
+                        AddErrorMessage('Invalid value type for replacement "%s"',[Identifier]);
                       end;
                     end
                   else
@@ -858,11 +882,11 @@ For i := Low(fAssemblerLines.Arr) to Pred(fAssemblerLines.Count) do
                         iatIMM16: If not fParser.CheckRange(Value,vsWord) then
                                     AddWarningMessage('Value of constant "%s" out of alloved range for this argument',[Identifier]);
                       else
-                        raise ESVCAssemblerError.CreateFmt('Invalid value type for replacement "%s"',[Identifier]);
+                        AddErrorMessage('Invalid value type for replacement "%s"',[Identifier]);
                       end;
                     end;
                 end
-              else raise ESVCAssemblerError.CreateFmt('Undeclared identifier "%s"',[Identifier]);
+              else AddErrorMessage('Undeclared identifier "%s"',[Identifier]);
             end; {If IsLabel then - else - end}
           // store value of replacement into the code
           If ValType in [iatREL8,iatIMM8] then
@@ -870,7 +894,7 @@ For i := Low(fAssemblerLines.Arr) to Pred(fAssemblerLines.Count) do
               If Position <= High(fAssemblerLines.Arr[i].Instruction.Data) then
                 fAssemblerLines.Arr[i].Instruction.Data[Position] := TSVCByte(Value)
               else
-                raise ESVCAssemblerError.CreateFmt('Replacement for identifier "%s" cannot fit into code stream',[Identifier]);
+                AddErrorMessage('Replacement for identifier "%s" cannot fit into code stream',[Identifier]);
             end
           else If ValType in [iatREL16,iatIMM16] then
             begin
@@ -879,9 +903,9 @@ For i := Low(fAssemblerLines.Arr) to Pred(fAssemblerLines.Count) do
                   fAssemblerLines.Arr[i].Instruction.Data[Position] := TSVCBYte(Value);
                   fAssemblerLines.Arr[i].Instruction.Data[Position + 1] := TSVCBYte(Value shr 8);
                 end
-              else raise ESVCAssemblerError.CreateFmt('Replacement for identifier "%s" cannot fit into code stream',[Identifier]);
+              else AddErrorMessage('Replacement for identifier "%s" cannot fit into code stream',[Identifier]);
             end
-          else raise ESVCAssemblerError.CreateFmt('Invalid argument type for replacement "%s"',[Identifier]);
+          else AddErrorMessage('Invalid argument type for replacement "%s"',[Identifier]);
           // remove replacement from unresolved
           RemoveUnresolved(Identifier);
         end;
@@ -920,7 +944,7 @@ case ResultType of
                   // assign value to appropriate constant
                   AssignSysToConst(fSystemValues.Arr[i].Identifier,fSystemValues.Arr[i].Value);
                 end
-              else raise ESVCAssemblerError.CreateFmt('Unknown system value %s',[AnsiUpperCase(PSVCParserResult_Sys(Result)^.Identifier)]);
+              else AddErrorMessage('Unknown system value %s',[AnsiUpperCase(PSVCParserResult_Sys(Result)^.Identifier)],True);
               TempLine.LineType := altSys;
               AddAssemblerLine(TempLine);
             end;
@@ -936,7 +960,7 @@ case ResultType of
                   TempLine.LineType := altConst;
                   AddAssemblerLine(TempLine);
                 end
-              else raise ESVCAssemblerError.CreateFmt('Identifier "%s" redeclared',[PSVCParserResult_Const(Result)^.Identifier]);
+              else AddErrorMessage('Identifier "%s" redeclared',[PSVCParserResult_Const(Result)^.Identifier],True);
             end;
   prtVar:   begin // variable
               fParsedLinePos := PSVCParserResult_Var(Result)^.IdentifierPos;
@@ -955,7 +979,7 @@ case ResultType of
                   TempLine.LineType := altVar;
                   AddAssemblerLine(TempLine);
                 end
-              else raise ESVCAssemblerError.CreateFmt('Identifier "%s" redeclared',[PSVCParserResult_Var(Result)^.Identifier]);
+              else AddErrorMessage('Identifier "%s" redeclared',[PSVCParserResult_Var(Result)^.Identifier],True);
             end;
   prtLabel: begin // label
               fParsedLinePos := PSVCParserResult_Label(Result)^.IdentifierPos;
@@ -967,7 +991,7 @@ case ResultType of
                   TempLine.LineType := altLabel;
                   AddAssemblerLine(TempLine);
                 end
-              else raise ESVCAssemblerError.CreateFmt('Label "%s" already declared elsewhere',[PSVCParserResult_Label(Result)^.Identifier]);
+              else AddErrorMessage('Label "%s" already declared elsewhere',[PSVCParserResult_Label(Result)^.Identifier],True);
             end;
   prtData:  begin // data
               TempLine.LineType := altData;
@@ -979,7 +1003,7 @@ case ResultType of
                   AddAssemblerLine(TempLine);
                   fCodeSize := fCodeSize + TMemSize(Length(TempLine.Instruction.Data));
                 end
-              else raise ESVCAssemblerError.Create('Program cannot fit into available memory');
+              else AddErrorMessage('Program cannot fit into available memory',True);
             end;
   prtInstr: begin // instruction
               TempLine.LineType := altInstr;
@@ -987,7 +1011,7 @@ case ResultType of
               fParsedLinePos := PSVCParserResult_Instr(Result)^.InstructionPos;
               If (PSVCParserResult_Instr(Result)^.Window.Position > Length(PSVCParserResult_Instr(Result)^.Window.Data)) or
                  (PSVCParserResult_Instr(Result)^.Window.Position < 0) then
-                raise ESVCAssemblerError.CreateFmt('Invalid instruction window size (%d)',[PSVCParserResult_Instr(Result)^.Window.Position]);
+                AddErrorMessage('Invalid instruction window size (%d)',[PSVCParserResult_Instr(Result)^.Window.Position],True);
               SetLength(TempLine.Instruction.Data,PSVCParserResult_Instr(Result)^.Window.Position);
               fParsedLinePos := 0;
               If (fCodeSize + TMemSize(Length(TempLine.Instruction.Data))) <= (TMemSize(High(TSVCNative)) + 1) then
@@ -1006,7 +1030,7 @@ case ResultType of
                   AddAssemblerLine(TempLine);
                   fCodeSize := fCodeSize + TMemSize(Length(TempLine.Instruction.Data));
                 end
-              else raise ESVCAssemblerError.Create('Program cannot fit into available memory');
+              else AddErrorMessage('Program cannot fit into available memory',True);
             end;
 else
   raise Exception.CreateFmt('TSVCAssembler.ParsingResultHandler: Unknown result type (%d).',[Ord(ResultType)]);

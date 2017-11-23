@@ -411,7 +411,7 @@ end;
 
 Function TSVCProcessor.IsValidGPRIdx(RegisterIndex: TSVCRegisterIndex): Boolean;
 begin
-Result := RegisterIndex in [0..Pred(SVC_REG_GP_IMPLEMENTED),REG_SL,REG_SB,REG_SP];
+Result := RegisterIndex in [0..Pred(SVC_REG_GP_IMPLEMENTED){,REG_SL,REG_SB,REG_SP}];
 end;
 
 //------------------------------------------------------------------------------
@@ -1194,6 +1194,10 @@ If State <> psUninitialized then
     FillChar(fMemory.Memory^,fMemory.Size,0);
     // init interrupt handlers
     FillChar(fInterruptHandlers,SizeOf(fInterruptHandlers),0);
+  {$IFDEF SVC_Debug}
+    // delete all breakpoints
+    ClearBreakPoints;
+  {$ENDIF SVC_Debug}  
     // init state
     Restart;
   end;

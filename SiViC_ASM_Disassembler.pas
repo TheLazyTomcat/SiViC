@@ -134,6 +134,7 @@ fDisassembledLines.Arr[fDisassembledLines.Count].HexStr := HexStr;
 fDisassembledLines.Arr[fDisassembledLines.Count].InstrLength := InstrLength;
 fDisassembledLines.Arr[fDisassembledLines.Count].WindowMap := WindowMap;
 fDisassembledLines.Arr[fDisassembledLines.Count].LineInfo := LineInfo;
+fDisassembledLines.Arr[fDisassembledLines.Count].UserData := 0;
 Inc(fDisassembledLines.Count);
 end;
 
@@ -202,6 +203,7 @@ fDisassembledLines.Arr[Result].HexStr := HexStr;
 fDisassembledLines.Arr[Result].InstrLength := InstrLength;
 fDisassembledLines.Arr[Result].WindowMap := WindowMap;
 fDisassembledLines.Arr[Result].LineInfo := LineInfo;
+fDisassembledLines.Arr[Result].UserData := 0;
 end;
 
 //------------------------------------------------------------------------------

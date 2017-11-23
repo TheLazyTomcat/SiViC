@@ -157,16 +157,29 @@ end;
 
 procedure TSVCDebugHelper.Update;
 var
-  i:  Integer;
+  i:      Integer;
+  GPRCh:  Boolean;
 begin
 // execution
 If Assigned(fOnExecution) and ((fAccessMask and SVC_ACCESSMASK_INSTRUCTION) <> 0) then
   fOnExecution(Self);
 // GPRs
+GPRCh := False;
 If Assigned(fOnGPRegisterChange) then
   For i := Low(fProcessor.Registers.GP) to High(fProcessor.Registers.GP) do
     If fProcessor.Registers.GP[i].Native <> fRegistersShadow.GP[i].Native then
-      fOnGPRegisterChange(Self,i);
+      begin
+        If i in [REG_SP,REG_SB,REG_SL] then
+          begin
+            If not GPRCh then
+              fOnGPRegisterChange(Self,i);
+          end
+        else
+          begin
+            GPRCh := True;
+            fOnGPRegisterChange(Self,i);
+          end;
+      end;
 // special registers
 If Assigned(fOnSpecRegisterChange) then
   begin

@@ -494,7 +494,7 @@ end;
 
 procedure TSVCProcessor_Base.Instruction_1C;   // POP        reg16
 begin
-ArgumentsDecode(False,[iatREG8]);
+ArgumentsDecode(False,[iatREG16]);
 RaiseStackError(IsValidStackPOPArea(SVC_SZ_WORD));
 TSVCWord(GetArgPtr(0)^) := StackPOP_W;
 end;

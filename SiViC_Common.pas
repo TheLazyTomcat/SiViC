@@ -62,8 +62,8 @@ procedure AddToArray(var Arr: TSVCByteArray; const Data; Size: TSVCNative);
 type
   TSVCCharSet = set of AnsiChar;
 
-Function CharInSet(C: AnsiChar; const CharSet: TSVCCharSet): Boolean; overload;{$IFDEF CanInline} inline;{$ENDIF}
-Function CharInSet(C: WideChar; const CharSet: TSVCCharSet): Boolean; overload;{$IFDEF CanInline} inline;{$ENDIF}
+Function SVC_CharInSet(C: AnsiChar; const CharSet: TSVCCharSet): Boolean; overload;{$IFDEF CanInline} inline;{$ENDIF}
+Function SVC_CharInSet(C: WideChar; const CharSet: TSVCCharSet): Boolean; overload;{$IFDEF CanInline} inline;{$ENDIF}
 
 implementation
 
@@ -140,14 +140,14 @@ end;
 
 //------------------------------------------------------------------------------
 
-Function CharInSet(C: AnsiChar; const CharSet: TSVCCharSet): Boolean; overload;
+Function SVC_CharInSet(C: AnsiChar; const CharSet: TSVCCharSet): Boolean; overload;
 begin
 Result := C in CharSet;
 end;
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-Function CharInSet(C: WideChar; const CharSet: TSVCCharSet): Boolean; overload;
+Function SVC_CharInSet(C: WideChar; const CharSet: TSVCCharSet): Boolean; overload;
 begin
 If Ord(C) <= 255 then
   Result := AnsiChar(C) in CharSet

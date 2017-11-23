@@ -102,13 +102,13 @@ end;
 
 Function TSVCLexer.GetCurrCharType: TSVCLexerCharType;
 begin
-If CharInSet(fLine[fPosition],SVC_ASM_LEXER_CHARS_WHITESPACE) then
+If SVC_CharInSet(fLine[fPosition],SVC_ASM_LEXER_CHARS_WHITESPACE) then
   Result := lctWhiteSpace
-else If CharInSet(fLine[fPosition],SVC_ASM_LEXER_CHARS_NUMBERSTART) then
+else If SVC_CharInSet(fLine[fPosition],SVC_ASM_LEXER_CHARS_NUMBERSTART) then
   Result := lctNumber
-else If CharInSet(fLine[fPosition],SVC_ASM_LEXER_CHARS_UNARYOPERATORS) then
+else If SVC_CharInSet(fLine[fPosition],SVC_ASM_LEXER_CHARS_UNARYOPERATORS) then
   Result := lctUnaryOp
-else If CharInSet(fLine[fPosition],SVC_ASM_LEXER_CHARS_IDENTIFIER) then
+else If SVC_CharInSet(fLine[fPosition],SVC_ASM_LEXER_CHARS_IDENTIFIER) then
   Result := lctIdentifier
 else If fLine[fPosition] = SVC_ASM_LEXER_CHAR_STRINGQUOTE then
   Result := lctStringQuote
@@ -213,7 +213,7 @@ end;
 
 procedure TSVCLexer.Process_Identifier;
 begin
-If not(CharInSet(fLine[fPosition],SVC_ASM_LEXER_CHARS_IDENTIFIER)) then
+If not(SVC_CharInSet(fLine[fPosition],SVC_ASM_LEXER_CHARS_IDENTIFIER)) then
   begin
     AddToken(Trim(Copy(fLine,fTokenStart,fTokenLength)),fTokenStart,lttIdentifier);
     fStage := lsTraverse;
@@ -226,9 +226,9 @@ end;
 
 procedure TSVCLexer.Process_Number;
 begin
-If not(CharInSet(fLine[fPosition],SVC_ASM_LEXER_CHARS_NUMBER)) then
+If not(SVC_CharInSet(fLine[fPosition],SVC_ASM_LEXER_CHARS_NUMBER)) then
   begin
-    If CharInSet(fLine[fPosition],SVC_ASM_LEXER_CHARS_IDENTIFIER) then
+    If SVC_CharInSet(fLine[fPosition],SVC_ASM_LEXER_CHARS_IDENTIFIER) then
       begin
         fStage := lsIdentifier;
         Inc(fTokenLength);
@@ -441,7 +441,7 @@ For i := 0 to Pred(fTokens.Count) do
   case fTokens.Arr[i].TokenType of
     lttUnaryOp:     fTokens.Arr[i].TokenType := lttGeneral;
     lttIdentifier:  If Length(fTokens.Arr[i].Str) = 1 then
-                      If CharInSet(fTokens.Arr[i].Str[1],SVC_ASM_LEXER_CHARS_INVAL_1_IDENT) then
+                      If SVC_CharInSet(fTokens.Arr[i].Str[1],SVC_ASM_LEXER_CHARS_INVAL_1_IDENT) then
                         fTokens.Arr[i].TokenType := lttGeneral;
     lttInvalid:     begin
                       Result := False;

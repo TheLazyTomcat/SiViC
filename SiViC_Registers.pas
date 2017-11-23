@@ -10,7 +10,7 @@ uses
 const
   SVC_REG_GP_COUNT       = 64; // do not change
   SVC_REG_GP_IMPLEMENTED = 64;
-  SVC_REG_GP_TOTALCOUNT  = SVC_REG_GP_IMPLEMENTED;
+  SVC_REG_GP_TOTALCOUNT  = SVC_REG_GP_IMPLEMENTED; //+ 3{SL,SB,SP};
 
   // general purpose registers indices
   SVC_REG_GP_IDX_R0  = 0;       REG_R0  = SVC_REG_GP_IDX_R0;

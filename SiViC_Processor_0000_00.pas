@@ -637,11 +637,9 @@ end;
 procedure TSVCProcessor_0000_00.Instruction_77;   // LOOP       rel8
 begin
 ArgumentsDecode(False,[iatREL8]);
+Dec(fRegisters.CNTR);
 If fRegisters.CNTR > 0 then
-  begin
-    AdvanceIP(GetArgVal(0));
-    Dec(fRegisters.CNTR);
-  end;
+  AdvanceIP(GetArgVal(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -649,11 +647,9 @@ end;
 procedure TSVCProcessor_0000_00.Instruction_78;   // LOOP       rel16
 begin
 ArgumentsDecode(False,[iatREL16]);
+Dec(fRegisters.CNTR);
 If fRegisters.CNTR > 0 then
-  begin
-    AdvanceIP(GetArgVal(0));
-    Dec(fRegisters.CNTR);
-  end;
+  AdvanceIP(GetArgVal(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -661,11 +657,9 @@ end;
 procedure TSVCProcessor_0000_00.Instruction_79;   // LOOPcc     rel8
 begin
 ArgumentsDecode(True,[iatREL8]);
+Dec(fRegisters.CNTR);
 If (fRegisters.CNTR > 0) and EvaluateCondition(ExtractConditionCode(fCurrentInstruction.Suffix)) then
-  begin
-    AdvanceIP(GetArgVal(0));
-    Dec(fRegisters.CNTR);
-  end;
+  AdvanceIP(GetArgVal(0));
 end;
 
 //------------------------------------------------------------------------------
@@ -673,11 +667,9 @@ end;
 procedure TSVCProcessor_0000_00.Instruction_7A;   // LOOPcc     rel16
 begin
 ArgumentsDecode(True,[iatREL16]);
+Dec(fRegisters.CNTR);
 If (fRegisters.CNTR > 0) and EvaluateCondition(ExtractConditionCode(fCurrentInstruction.Suffix)) then
-  begin
-    AdvanceIP(GetArgVal(0));
-    Dec(fRegisters.CNTR);
-  end;
+  AdvanceIP(GetArgVal(0));
 end;
 
 //------------------------------------------------------------------------------
