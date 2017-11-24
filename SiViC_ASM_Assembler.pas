@@ -17,7 +17,8 @@ uses
 
 const
   SVC_ASM_ASSEMBLER_LOWORD_SUFFIX = '_LO';
-  SVC_ASM_ASSEMBLER_HIWORD_SUFFIX = '_HI';   
+  SVC_ASM_ASSEMBLER_HIWORD_SUFFIX = '_HI';
+  SVC_ASM_ASSEMBLER_LENGTH_SUFFIX = '_LEN';
 
 type
   TSVCAssemblerItem_Sys = record
@@ -37,6 +38,7 @@ type
     Value:      TSVCNative;
     Size:       TSVCValueSize;
     SrcLineIdx: Integer;
+    SrcLinePos: Integer;
   end;
 
   TSVCAssemblerList_Const = record
@@ -54,6 +56,7 @@ type
     ReferenceOffset:        TSVCNative;
     Address:                TSVCNative;
     SrcLineIdx:             Integer;
+    SrcLinePos:             Integer;
   end;
 
   TSVCAssemblerList_Var = record
@@ -385,12 +388,14 @@ If IndexOfSys(Identifier) < 0 then
     ConstTemp.Value := TSVCNative(Value);
     ConstTemp.Size := vsNative;
     ConstTemp.SrcLineIdx := -1;
+    ConstTemp.SrcLinePos := 0;
     AddConst(ConstTemp);
     // add high word as constant
     ConstTemp.Identifier := Identifier + SVC_ASM_ASSEMBLER_HIWORD_SUFFIX;
     ConstTemp.Value := TSVCNative(Value shr 16);
     ConstTemp.Size := vsNative;
     ConstTemp.SrcLineIdx := -1;
+    ConstTemp.SrcLinePos := 0;
     AddConst(ConstTemp);
   end
 else raise Exception.Create('TSVCAssembler.AddDefaultSys: Default system value already defined');
@@ -577,20 +582,22 @@ Function TSVCAssembler.AddErrorMessage(const Text: String; Values: array of cons
 var
   TempMsg:  TSVCAssemblerMessage;
 begin
-TempMsg.MessageType := pmtError;
-TempMsg.Text := Format(Text,Values);
-TempMsg.LineIdx := fParsedLineIdx;
-TempMsg.Position := fParsedLinePos;
-Result := AddAssemblerMessage(TempMsg);
-If Fatal then
-  raise ESVCAssemblerError.CreateFmt(Text,Values);
+If not Fatal then
+  begin
+    TempMsg.MessageType := pmtError;
+    TempMsg.Text := Format(Text,Values);
+    TempMsg.LineIdx := fParsedLineIdx;
+    TempMsg.Position := fParsedLinePos;
+    Result := AddAssemblerMessage(TempMsg);
+  end
+else raise ESVCAssemblerError.CreateFmt(Text,Values);
 end;
 
 //------------------------------------------------------------------------------
 
 Function TSVCAssembler.AddErrorMessage(const Text: String; Fatal: Boolean = False): Integer;
 begin
-AddErrorMessage(Text,[],Fatal);
+Result := AddErrorMessage(Text,[],Fatal);
 end;
 
 //------------------------------------------------------------------------------
@@ -612,6 +619,7 @@ var
 begin
 Temp.Size := vsNative;
 Temp.SrcLineIdx := -1;
+Temp.SrcLinePos := 0;
 For i := 0 to Pred(fLists.PredefinedConstantCount) do
   begin
     Temp.Identifier := fLists.PredefinedConstants[i].Identifier;
@@ -740,11 +748,23 @@ If fVariables.Count > 0 then
                     end
                   else AddErrorMessage('Variable "%s" cannot fit into memory',[fVariables.Arr[i].Identifier]);
                 end;
+              // add address of variable as a constant
               Temp.Identifier := fVariables.Arr[i].Identifier;
               Temp.Value := fVariables.Arr[i].Address;
               Temp.Size := vsNative;
               Temp.SrcLineIdx := fVariables.Arr[i].SrcLineIdx;
+              Temp.SrcLinePos := fVariables.Arr[i].SrcLinePos;
               AddConst(Temp);
+              // add size/length of the variable data
+              Temp.Identifier := fVariables.Arr[i].Identifier + SVC_ASM_ASSEMBLER_LENGTH_SUFFIX;
+              Temp.Value := fVariables.Arr[i].Size;
+              Index := IndexOfConst(Temp.Identifier);
+              If Index < 0 then
+                AddConst(Temp)
+              else
+                AddAssemblerMessage(BuildAssemblerMessage(pmtError,
+                 Format('Identifier "%s" redeclared',[Temp.Identifier]),
+                 fConstants.Arr[Index].SrcLineIdx,fConstants.Arr[Index].SrcLinePos));
             end;
         finally
           fMemTaken := CurrAddr;
@@ -768,6 +788,7 @@ fParsedLinePos := 0;
 // check stack size
 Index := CheckedIndexOfSys(SVC_PROGRAM_SYSVALNAME_STACKSIZE);
 fParsedLineIdx := fSystemValues.Arr[Index].SrcLineIdx;
+StackSize := 0;
 If fSystemValues.Arr[Index].Value >= TSVCComp(High(TSVCNative) + 1) then
   AddErrorMessage('Stack cannot fit into available memory')
 else
@@ -819,6 +840,7 @@ For i := Low(fAssemblerLines.Arr) to Pred(fAssemblerLines.Count) do
           fParsedLine := fAssemblerLines.Arr[i].Str;
           fParsedLineIdx := fAssemblerLines.Arr[i].SrcLineIdx;
           fParsedLinePos := LinePos;
+          Value := 0;
           If IsLabel then
             begin
               // replacement is a label, true value needs to be calculated
@@ -956,11 +978,12 @@ case ResultType of
                   TempConst.Value := PSVCParserResult_Const(Result)^.Value;
                   TempConst.Size := PSVCParserResult_Const(Result)^.Size;
                   TempConst.SrcLineIdx := fParsedLineIdx;
+                  TempConst.SrcLinePos := fParsedLinePos;
                   AddConst(TempConst);
                   TempLine.LineType := altConst;
                   AddAssemblerLine(TempLine);
                 end
-              else AddErrorMessage('Identifier "%s" redeclared',[PSVCParserResult_Const(Result)^.Identifier],True);
+              else AddErrorMessage('Identifier "%s" redeclared',[PSVCParserResult_Const(Result)^.Identifier]);
             end;
   prtVar:   begin // variable
               fParsedLinePos := PSVCParserResult_Var(Result)^.IdentifierPos;
@@ -975,11 +998,12 @@ case ResultType of
                   TempVar.ReferenceOffset := PSVCParserResult_Var(Result)^.ReferenceOffset;
                   TempVar.Address := 0;
                   TempVar.SrcLineIdx := fParsedLineIdx;
+                  TempVar.SrcLinePos := fParsedLinePos;
                   AddVar(TempVar);
                   TempLine.LineType := altVar;
                   AddAssemblerLine(TempLine);
                 end
-              else AddErrorMessage('Identifier "%s" redeclared',[PSVCParserResult_Var(Result)^.Identifier],True);
+              else AddErrorMessage('Identifier "%s" redeclared',[PSVCParserResult_Var(Result)^.Identifier]);
             end;
   prtLabel: begin // label
               fParsedLinePos := PSVCParserResult_Label(Result)^.IdentifierPos;
@@ -991,7 +1015,7 @@ case ResultType of
                   TempLine.LineType := altLabel;
                   AddAssemblerLine(TempLine);
                 end
-              else AddErrorMessage('Label "%s" already declared elsewhere',[PSVCParserResult_Label(Result)^.Identifier],True);
+              else AddErrorMessage('Label "%s" already declared elsewhere',[PSVCParserResult_Label(Result)^.Identifier]);
             end;
   prtData:  begin // data
               TempLine.LineType := altData;

@@ -798,14 +798,17 @@ begin
 If Assigned(fOnBeforeInstruction) then
   fOnBeforeInstruction(Self);
 {$ENDIF SVC_Debug}
-InstructionDecode;
-If Assigned(fCurrentInstruction.InstructionHandler) then
-  begin
-    InstructionExecute;
-    fCurrentInstruction.PrevPrefixes := fCurrentInstruction.Prefixes;
-  end
-else raise ESVCInterruptException.Create(SVC_EXCEPTION_INVALIDINSTRUCTION);
-Inc(fExecutionCount);
+try
+  InstructionDecode;
+  If Assigned(fCurrentInstruction.InstructionHandler) then
+    begin
+      InstructionExecute;
+      fCurrentInstruction.PrevPrefixes := fCurrentInstruction.Prefixes;
+    end
+  else raise ESVCInterruptException.Create(SVC_EXCEPTION_INVALIDINSTRUCTION);
+finally
+  Inc(fExecutionCount);
+end;
 {$IFDEF SVC_Debug}
 If Assigned(fOnAfterInstruction) then
   fOnAfterInstruction(Self);
