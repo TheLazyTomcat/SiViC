@@ -411,7 +411,7 @@ end;
 
 Function TSVCProcessor.IsValidGPRIdx(RegisterIndex: TSVCRegisterIndex): Boolean;
 begin
-Result := RegisterIndex in [0..Pred(SVC_REG_GP_IMPLEMENTED){,REG_SL,REG_SB,REG_SP}];
+Result := RegisterIndex in [0..Pred(SVC_REG_GP_IMPLEMENTED),REG_SL,REG_SB,REG_SP];
 end;
 
 //------------------------------------------------------------------------------

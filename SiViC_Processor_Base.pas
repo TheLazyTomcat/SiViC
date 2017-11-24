@@ -546,14 +546,16 @@ end;
 procedure TSVCProcessor_Base.Instruction_21;   // PUSHA
 var
   i:  Integer;
+  SP: TSVCNative;
 begin
 ArgumentsDecode(False,[]);
 RaiseStackError(IsValidStackPUSHArea(SVC_REG_GP_TOTALCOUNT * SVC_SZ_NATIVE));
+SP := fRegisters.GP[REG_SP].Native;
 For i := 0 to Pred(SVC_REG_GP_IMPLEMENTED) do
-  StackPUSH(GetGPRVal(i));
-StackPUSH(GetGPRVal(REG_SL));
-StackPUSH(GetGPRVal(REG_SB));
-StackPUSH(GetGPRVal(REG_SP));
+  StackPUSH(fRegisters.GP[i].Native);
+StackPUSH(fRegisters.GP[REG_SL].Native);
+StackPUSH(fRegisters.GP[REG_SB].Native);
+StackPUSH(SP);
 end;
 
 //------------------------------------------------------------------------------
@@ -561,14 +563,16 @@ end;
 procedure TSVCProcessor_Base.Instruction_22;   // POPA
 var
   i:  Integer;
+  SP: TSVCNative;
 begin
 ArgumentsDecode(False,[]);
 RaiseStackError(IsValidStackPOPArea(SVC_REG_GP_TOTALCOUNT * SVC_SZ_NATIVE));
-SetGPRVal(REG_SP,StackPOP);
-SetGPRVal(REG_SB,StackPOP);
-SetGPRVal(REG_SL,StackPOP);
+SP := StackPOP;
+fRegisters.GP[REG_SB].Native := StackPOP;
+fRegisters.GP[REG_SL].Native := StackPOP;
 For i := Pred(SVC_REG_GP_IMPLEMENTED) downto 0 do
-  SetGPRVal(i,StackPOP);
+  fRegisters.GP[i].Native := StackPOP;
+fRegisters.GP[REG_SP].Native := SP;  
 end;
 
 //------------------------------------------------------------------------------
