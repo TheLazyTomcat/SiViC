@@ -154,7 +154,7 @@ begin
 case Prefix of
   $E0:  with fCurrentInstruction do Prefixes := Prefixes + PrevPrefixes;  // PFXR
 else
-  raise ESVCInterruptException.Create(SVC_EXCEPTION_INVALIDINSTRUCTION);
+  inherited PrefixSelect(Prefix);
 end;
 end;
 
@@ -279,7 +279,8 @@ end;
 procedure TSVCProcessor_Base.Instruction_05;   // INVINS
 begin
 ArgumentsDecode(False,[]);
-raise ESVCInterruptException.Create(SVC_EXCEPTION_INVALIDINSTRUCTION);
+raise ESVCInterruptException.Create(SVC_EXCEPTION_INVALIDINSTRUCTION,
+        TSVCNative(-FCurrentInstruction.Window.Position));
 end;
 
 //------------------------------------------------------------------------------

@@ -156,6 +156,7 @@ case fUnparserData.Window.Data[fUnparserData.Window.Position] of
           fStage := usPrefix;            
         end;
 else
+  // it should never get here
   raise ESVCUnparsingError.CreateFmt('Invalid code (0x.2x) at %d',
           [fUnparserData.Window.Data[fUnparserData.Window.Position],fUnparserData.Window.Position]);
 end;
@@ -173,11 +174,11 @@ begin
 // usOpCode -> usArgument
 // usOpCode -> usFinal
 fUnparserData.InstrIdx := fLists.IndexOfInstruction(fUnparserData.OpCode);
+// add instruction to hex
+For i := Low(fUnparserData.OpCode) to High(fUnparserData.OpCode) do
+  AppendToHexLine(fUnparserData.OpCode[i],wmitInstruction,i = Low(fUnparserData.OpCode));
 If fUnparserData.InstrIdx >= 0 then
   begin
-    // add instruction to hex
-    For i := Low(fUnparserData.OpCode) to High(fUnparserData.OpCode) do
-      AppendToHexLine(fUnparserData.OpCode[i],wmitInstruction,i = Low(fUnparserData.OpCode));
     with fLists.Instructions[fUnparserData.InstrIdx] do
       begin
         If CCSuffix or MemSuffix then

@@ -650,9 +650,9 @@ procedure TSVCAssembler.SortMessages;
   begin
     Result := (fAssemblerMessages.Arr[Idx1].LineIdx - fAssemblerMessages.Arr[Idx2].LineIdx) * 10;
     If fAssemblerMessages.Arr[Idx1].Position > fAssemblerMessages.Arr[Idx2].Position then
-      Dec(Result)
+      Inc(Result)
     else
-      Inc(Result);
+      Dec(Result);
   end;
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

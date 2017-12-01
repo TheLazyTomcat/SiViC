@@ -16,6 +16,7 @@ type
     Data:       TSVCNative;
     InHandler:  TSVCPortEvent;
     OutHandler: TSVCPortEvent;
+    Connected:  Boolean;
   end;
 
   TSVCPorts = array[TSVCPortIndex] of TSVCPort;

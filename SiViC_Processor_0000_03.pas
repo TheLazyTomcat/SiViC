@@ -89,7 +89,7 @@ case InstructionByte of
   $15:  fCurrentInstruction.InstructionHandler := Instruction_D2_15;  // OUTSB      reg8,   reg16
   $16:  fCurrentInstruction.InstructionHandler := Instruction_D2_16;  // OUTSW      reg8,   reg16
 else
-  raise ESVCInterruptException.Create(SVC_EXCEPTION_INVALIDINSTRUCTION);
+  raise ESVCInterruptException.Create(SVC_EXCEPTION_INVALIDINSTRUCTION,1);
 end;
 end;
 

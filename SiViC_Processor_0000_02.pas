@@ -417,7 +417,7 @@ case InstructionByte of
   $AF:  fCurrentInstruction.InstructionHandler := Instruction_D1_AF;  // SHLD       mem16,  reg16,  reg8
   $B0:  fCurrentInstruction.InstructionHandler := Instruction_D1_B0;  // SHLD       reg16,  mem16,  reg8
 else
-  raise ESVCInterruptException.Create(SVC_EXCEPTION_INVALIDINSTRUCTION);
+  raise ESVCInterruptException.Create(SVC_EXCEPTION_INVALIDINSTRUCTION,1);
 end;
 end;
 

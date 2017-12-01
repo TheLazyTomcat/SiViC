@@ -62,7 +62,6 @@ type
     fCurrentInstruction:  TSVCInstructionData;
     // synchronization stuff
     fOnSynchronization:   TNotifyEvent;
-    procedure EndSynchronization(Sender: TObject); virtual;
     // processor info engine
     Function GetInfoPage({%H-}Page: TSVCProcessorInfoPage; {%H-}Param: TSVCProcessorInfoData): TSVCProcessorInfoData; virtual;
     // memory access
@@ -146,9 +145,11 @@ type
     procedure Reset; virtual;
     procedure ExecuteInstruction(InstructionWindow: TSVCInstructionWindow; AffectIP: Boolean = False); virtual;
     Function Run(InstructionCount: Integer = 1): Integer; virtual;
+    procedure EndSynchronization(Sender: TObject); virtual;
     procedure InterruptRequest(InterruptIndex: TSVCInterruptIndex; Data: TSVCNative = 0); virtual;
     Function DeviceConnected(PortIndex: TSVCPortIndex): Boolean; virtual;
     procedure ConnectDevice(PortIndex: TSVCPortIndex; InHandler,OutHandler: TSVCPortEvent); virtual;
+    procedure DisconnectDevice(PortIndex: TSVCPortIndex); virtual;
     Function SaveNVMemory(const FileName: String): Boolean; virtual;
     Function LoadNVMemory(const FileName: String): Boolean; virtual;
   {$IFDEF SVC_Debug}
@@ -197,14 +198,6 @@ end;
 {$ENDIF SVC_Debug}
 
 //==============================================================================
-
-procedure TSVCProcessor.EndSynchronization(Sender: TObject);
-begin
-If fState = psSynchronizing then
-  fState := psRunning;
-end;
-
-//------------------------------------------------------------------------------
 
 Function TSVCProcessor.GetInfoPage(Page: TSVCProcessorInfoPage; Param: TSVCProcessorInfoData): TSVCProcessorInfoData;
 begin
@@ -564,14 +557,14 @@ begin
 If E is ESVCInterruptException then
   with ESVCInterruptException(E) do
     DispatchInterrupt(InterruptIndex,InterruptData)
+else If E is ESVCQuietInternalException then
+  {nothing, continue}
 else If E is ESVCFatalInternalException then
   begin
     fFaultClass := E.ClassName;
     fFaultMessage := ESVCFatalInternalException(E).Message;
     fState := psFailed;
   end
-else If E is ESVCQuietInternalException then
-  {nothing, continue}
 else
   begin
     fState := psFailed;
@@ -583,6 +576,12 @@ end;
 
 procedure TSVCProcessor.DispatchInterrupt(InterruptIndex: TSVCInterruptIndex; Data: TSVCNative = 0);
 begin
+// corrections for individual interrupts
+If InterruptIndex = SVC_EXCEPTION_INVALIDINSTRUCTION then
+  begin
+    AdvanceIP(TSVCNative(fCurrentInstruction.Window.Position + TSVCSNative(Data)));
+    Data := fCurrentInstruction.StartAddress;
+  end;
 try
   If GetFlag(SVC_REG_FLAGS_INTERRUPTS) or (InterruptIndex <= SVC_INT_IDX_MAXEXC) then
     begin
@@ -596,20 +595,15 @@ try
               If (fInterruptHandlers[InterruptIndex].Counter <= 0) or not IsIRQInterrupt(InterruptIndex) then
                 begin
                   case IsValidStackPUSHArea(SVC_INT_INTERRUPTSTACKSPACE) of
-                    seOverflow,
-                    seUnderflow:  raise ESVCFatalInternalException.Create('TSVCProcessor.DispatchInterrupt: Triple fault (stack fault).');
+                    seOverflow:   raise ESVCFatalInternalException.Create('TSVCProcessor.DispatchInterrupt: Triple fault (stack overflow).');
+                    seUnderflow:  raise ESVCFatalInternalException.Create('TSVCProcessor.DispatchInterrupt: Triple fault (stack underflow).');
                   else
                    {seOK,seRedZone}
                     Inc(fInterruptHandlers[InterruptIndex].Counter);
                     StackPUSH(fRegisters.FLAGS);
                     StackPUSH(InterruptIndex);
                     StackPUSH(Data);
-                    If InterruptIndex <= SVC_INT_IDX_MAXEXC then
-                      // exception, pust start of the instruction that caused it
-                      StackPUSH(fCurrentInstruction.StartAddress)
-                    else
-                      // other insterrupts, push current instruction pointer
-                      StackPUSH(fRegisters.IP);
+                    StackPUSH(fRegisters.IP);
                     fRegisters.IP := fInterruptHandlers[InterruptIndex].HandlerAddr;
                     ClearFlag(SVC_REG_FLAGS_INTERRUPTS);
                   end;
@@ -651,22 +645,32 @@ end;
 
 procedure TSVCProcessor.PortUpdated(PortIndex: TSVCPortIndex);
 begin
-If Assigned(fPorts[PortIndex].OutHandler) then
-  fPorts[PortIndex].OutHandler(Self,PortIndex,fPorts[PortIndex].Data)
+If fPorts[PortIndex].Connected then
+  begin
+    If Assigned(fPorts[PortIndex].OutHandler) then
+      fPorts[PortIndex].OutHandler(Self,PortIndex,fPorts[PortIndex].Data);
+  end
 else
-  If GetCRFlag(SVC_REG_CR_PORTERRORS) then
-    raise ESVCInterruptException.Create(SVC_EXCEPTION_DEVICENOTAVAILABLE,TSVCNative(PortIndex));
+  begin
+    If GetCRFlag(SVC_REG_CR_PORTERRORS) then
+      raise ESVCInterruptException.Create(SVC_EXCEPTION_DEVICENOTAVAILABLE,TSVCNative(PortIndex));
+  end;
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TSVCProcessor.PortRequested(PortIndex: TSVCPortIndex);
 begin
-If Assigned(fPorts[PortIndex].InHandler) then
-  fPorts[PortIndex].InHandler(Self,PortIndex,fPorts[PortIndex].Data)
+If fPorts[PortIndex].Connected then
+  begin
+    If Assigned(fPorts[PortIndex].InHandler) then
+      fPorts[PortIndex].InHandler(Self,PortIndex,fPorts[PortIndex].Data);
+  end
 else
-  If GetCRFlag(SVC_REG_CR_PORTERRORS) then
-    raise ESVCInterruptException.Create(SVC_EXCEPTION_DEVICENOTAVAILABLE,TSVCNative(PortIndex));
+  begin
+    If GetCRFlag(SVC_REG_CR_PORTERRORS) then
+      raise ESVCInterruptException.Create(SVC_EXCEPTION_DEVICENOTAVAILABLE,TSVCNative(PortIndex));
+  end;
 end;
 
 //------------------------------------------------------------------------------
@@ -784,10 +788,10 @@ end;
 procedure TSVCProcessor.InstructionFetch;
 begin
 fCurrentInstruction.StartAddress := fRegisters.IP;
-If fMemory.IsValidAddr(fRegisters.IP) then
+If fMemory.IsValidArea(fRegisters.IP,SVC_SZ_BYTE) then
   fMemory.FetchMemoryArea(fRegisters.IP,SizeOf(TSVCInstructionWindowData),fCurrentInstruction.Window.Data)
 else
-  raise ESVCInterruptException.Create(SVC_EXCEPTION_MEMORYACCESS);
+  raise ESVCFatalInternalException.CreateFmt('TSVCProcessor.InstructionFetch: Invalid instruction pointer (0x%.4x).',[fRegisters.IP]);
 end;
 
 //------------------------------------------------------------------------------
@@ -798,8 +802,8 @@ begin
 If Assigned(fOnBeforeInstruction) then
   fOnBeforeInstruction(Self);
 {$ENDIF SVC_Debug}
+InstructionDecode;
 try
-  InstructionDecode;
   If Assigned(fCurrentInstruction.InstructionHandler) then
     begin
       InstructionExecute;
@@ -903,7 +907,7 @@ For i := Low(ArgumentList) to High(ArgumentList) do
       If Suffix then
         Inc(ArgsLength,AddressingModeLengthSuffix(fCurrentInstruction.Suffix))
       else
-        raise ESVCInterruptException.Create(SVC_EXCEPTION_INVALIDINSTRUCTION);
+        raise ESVCFatalInternalException.Create('TSVCProcessor.ArgumentsDecode: Suffix expected.');
   else
     raise ESVCFatalInternalException.CreateFmt('TSVCProcessor.ArgumentsDecode: Unknonw argument type (%d).',[Ord(ArgumentList[i])]);
   end;
@@ -982,14 +986,14 @@ end;
 
 procedure TSVCProcessor.PrefixSelect(Prefix: TSVCInstructionPrefix);
 begin
-raise ESVCInterruptException.Create(SVC_EXCEPTION_INVALIDINSTRUCTION);
+raise ESVCInterruptException.Create(SVC_EXCEPTION_INVALIDINSTRUCTION,1);
 end;
 
 //------------------------------------------------------------------------------
 
 procedure TSVCProcessor.InstructionSelect_L1(InstructionByte: TSVCByte);
 begin
-raise ESVCInterruptException.Create(SVC_EXCEPTION_INVALIDINSTRUCTION);
+raise ESVCInterruptException.Create(SVC_EXCEPTION_INVALIDINSTRUCTION,1);
 end;
 
 //------------------------------------------------------------------------------
@@ -997,7 +1001,7 @@ end;
 procedure TSVCProcessor.InstructionDecode(SelectMethod: TSVCInstructionSelectMethod; InstructionLength: Integer);
 begin
 Inc(fCurrentInstruction.Window.Position);
-If IsValidCurrWndPos then
+If IsValidCurrWndPos and (InstructionLength <= SVC_INS_MAXOPCODELENGTH) then
   begin
     fCurrentInstruction.Instruction[Pred(InstructionLength)] := GetWndCurrByte;
     fCurrentInstruction.InstructionLength := InstructionLength;
@@ -1011,10 +1015,10 @@ If IsValidCurrWndPos then
               InstructionDecode(SelectMethod,InstructionLength);
             end
     else
-      raise ESVCInterruptException.Create(SVC_EXCEPTION_INVALIDINSTRUCTION);
+      raise ESVCInterruptException.Create(SVC_EXCEPTION_INVALIDINSTRUCTION,1);
     end;
   end
-else raise ESVCInterruptException.Create(SVC_EXCEPTION_INVALIDINSTRUCTION);
+else raise ESVCInterruptException.Create(SVC_EXCEPTION_INVALIDINSTRUCTION,1);
 end;
 
 //==============================================================================
@@ -1213,18 +1217,21 @@ var
   InstrPtr: TSVCNative;
 begin
 If State <> psUninitialized then
-  try
+  begin
     InstrPtr := fRegisters.IP;
     try
       fCurrentInstruction.StartAddress := fRegisters.IP;
       fCurrentInstruction.Window := InstructionWindow;  // fetch
-      InstructionIssue;
+      try
+        InstructionIssue;
+      except
+        on E: Exception do HandleException(E);
+      end;
     finally
+      InvalidateInstructionData;
       If not AffectIP then
         fRegisters.IP := InstrPtr;
     end;
-  except
-    on E: Exception do HandleException(E);
   end;
 end;
 
@@ -1252,6 +1259,14 @@ end;
 
 //------------------------------------------------------------------------------
 
+procedure TSVCProcessor.EndSynchronization(Sender: TObject);
+begin
+If fState = psSynchronizing then
+  fState := psRunning;
+end;
+
+//------------------------------------------------------------------------------
+
 procedure TSVCProcessor.InterruptRequest(InterruptIndex: TSVCInterruptIndex; Data: TSVCNative = 0);
 begin
 If (State <> psUninitialized) and IsIRQInterrupt(InterruptIndex) then
@@ -1266,7 +1281,7 @@ end;
 
 Function TSVCProcessor.DeviceConnected(PortIndex: TSVCPortIndex): Boolean;
 begin
-Result := Assigned(fPorts[PortIndex].OutHandler) and Assigned(fPorts[PortIndex].InHandler);
+Result := fPorts[PortIndex].Connected;
 end;
 
 //------------------------------------------------------------------------------
@@ -1275,6 +1290,16 @@ procedure TSVCProcessor.ConnectDevice(PortIndex: TSVCPortIndex; InHandler,OutHan
 begin
 fPorts[PortIndex].InHandler := InHandler;
 fPorts[PortIndex].OutHandler := OutHandler;
+fPorts[PortIndex].Connected := True;
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSVCProcessor.DisconnectDevice(PortIndex: TSVCPortIndex);
+begin
+fPorts[PortIndex].InHandler := nil;
+fPorts[PortIndex].OutHandler := nil;
+fPorts[PortIndex].Connected := False;
 end;
 
 //------------------------------------------------------------------------------

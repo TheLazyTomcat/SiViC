@@ -309,7 +309,7 @@ var
   InstrLen: Integer;
   Window:   TSVCInstructionWindow;
 begin
-If TMemSize(ProcessorObject.Registers.IP) < ProcessorObject.Memory.Size then
+If ProcessorObject.Memory.IsValidArea(ProcessorObject.Registers.IP,SVC_SZ_BYTE) then
   begin
     ProcessorObject.Memory.FetchMemoryArea(ProcessorObject.Registers.IP,Length(Window.Data),Window.Data);
     InstrLen := TSVCNative(fUnparser.Unparse(Window));

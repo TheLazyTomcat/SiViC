@@ -74,7 +74,7 @@ type
     Arguments:          array[0..Pred(SVC_INS_MAXARGUMENTS)] of TSVCInstructionArgumentData;
   end;
 
-// some functions for instructions/arguments manipulation and eccess
+// some functions for instructions/arguments manipulation and access
 Function ExtractAddressingMode(Suffix: TSVCInstructionSuffix): TSVCInstructionAddressingMode;{$IFDEF CanInline} inline;{$ENDIF}
 Function ExtractConditionCode(Suffix: TSVCInstructionSuffix): TSVCInstructionConditionCode;{$IFDEF CanInline} inline;{$ENDIF}
 
