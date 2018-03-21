@@ -778,7 +778,7 @@ finally
   InvalidateInstructionData;
 end;
 {$IFDEF SVC_Debug}
-If IndexOfBreakPoint(fRegisters.IP) >= 0 then
+If (IndexOfBreakPoint(fRegisters.IP) >= 0) and (fState = psRunning) then
   fState := psReleased;
 {$ENDIF SVC_Debug}
 end;
