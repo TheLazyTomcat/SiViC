@@ -16,6 +16,10 @@ uses
   SiViC_IO,
   SiViC_Program;
 
+{$IFDEF FPC_DisableWarns}
+  {$WARN 5024 OFF} // Parameter "$1" not used
+{$ENDIF}
+
 type
 {$IFDEF SVC_Debug}
   TSVCProcessorBreakPoints = record
@@ -63,7 +67,7 @@ type
     // synchronization stuff
     fOnSynchronization:   TNotifyEvent;
     // processor info engine
-    Function GetInfoPage({%H-}Page: TSVCProcessorInfoPage; {%H-}Param: TSVCProcessorInfoData): TSVCProcessorInfoData; virtual;
+    Function GetInfoPage(Page: TSVCProcessorInfoPage; Param: TSVCProcessorInfoData): TSVCProcessorInfoData; virtual;
     // memory access
     Function ResolveMemoryAddress(AddressingMode: TSVCInstructionAddressingMode; out Address: TSVCNative): Boolean; virtual;
   {$IFDEF SVC_Debug}
@@ -126,9 +130,9 @@ type
     procedure InstructionExecute; virtual;
     // instruction decoding
     procedure ArgumentsDecode(Suffix: Boolean; ArgumentList: array of TSVCInstructionArgumentType; AccessingNVMem: Boolean = False); virtual;
-    procedure PrefixSelect({%H-}Prefix: TSVCInstructionPrefix); virtual;
+    procedure PrefixSelect(Prefix: TSVCInstructionPrefix); virtual;
     procedure InstructionDecode(SelectMethod: TSVCInstructionSelectMethod; InstructionLength: Integer); overload; virtual;
-    procedure InstructionSelect_L1({%H-}InstructionByte: TSVCByte); virtual;
+    procedure InstructionSelect_L1(InstructionByte: TSVCByte); virtual;
   public
     class Function GetArchitecture: TSVCProcessorInfoData; virtual;
     class Function GetRevision: TSVCProcessorInfoData; virtual;

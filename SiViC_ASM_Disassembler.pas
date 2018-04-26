@@ -64,6 +64,10 @@ uses
   AuxTypes,
   SiViC_Instructions;
 
+{$IFDEF FPC_DisableWarns}
+  {$WARN 4055 OFF} // Conversion between ordinals and pointers is not portable
+{$ENDIF}
+
 Function TSVCDisassembler.GetDisassembledLine(Index: Integer): TSVCDisassemblerDisassembledLine;
 begin
 If (Index >= Low(fDisassembledLines.Arr)) and (Index < fDisassembledLines.Count) then
@@ -252,9 +256,9 @@ var
     If TMemSize(Offset + Length(Window.Data)) > ProgramObject.ProgramSize then
       begin
         FillChar(Window.Data,Length(Window.Data),0);
-        Move({%H-}Pointer({%H-}PtrUInt(ProgramObject.ProgramData) + PtrUInt(Offset))^,Window.Data,ProgramObject.ProgramSize - Offset);
+        Move(Pointer(PtrUInt(ProgramObject.ProgramData) + PtrUInt(Offset))^,Window.Data,ProgramObject.ProgramSize - Offset);
       end
-    else Move({%H-}Pointer({%H-}PtrUInt(ProgramObject.ProgramData) + PtrUInt(Offset))^,Window.Data,Length(Window.Data));
+    else Move(Pointer(PtrUInt(ProgramObject.ProgramData) + PtrUInt(Offset))^,Window.Data,Length(Window.Data));
   end;
 
 begin

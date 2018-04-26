@@ -110,6 +110,10 @@ uses
   SiViC_Interrupts,
   SiViC_IO;
 
+{$IFDEF FPC_DisableWarns}
+  {$WARN 4055 OFF} // Conversion between ordinals and pointers is not portable
+{$ENDIF}
+
 Function TSVCProcessor_Base.PutIntoMemory(Address: TSVCNative; Value: UInt64): TSVCProcessorInfoData;
 begin
 If Address <> 0 then
@@ -136,10 +140,10 @@ case Page of
   SVC_PCS_INFOPAGE_CPU_REVISION:      Result := GetRevision;
   // memory info
   SVC_PCS_INFOPAGE_MEM_SIZE:          Result := PutIntoMemory(TSVCNative(Param),UInt64(fMemory.Size));
-  SVC_PCS_INFOPAGE_MEM_BASE:          Result := PutIntoMemory(TSVCNative(Param),UInt64({%H-}PtrUInt(fMemory.Memory)));
+  SVC_PCS_INFOPAGE_MEM_BASE:          Result := PutIntoMemory(TSVCNative(Param),UInt64(PtrUInt(fMemory.Memory)));
   // non-volatile memory info
   SVC_PCS_INFOPAGE_MEM_NVSIZE:        Result := PutIntoMemory(TSVCNative(Param),UInt64(fNVMemory.Size));
-  SVC_PCS_INFOPAGE_MEM_NVBASE:        Result := PutIntoMemory(TSVCNative(Param),UInt64({%H-}PtrUInt(fNVMemory.Memory)));
+  SVC_PCS_INFOPAGE_MEM_NVBASE:        Result := PutIntoMemory(TSVCNative(Param),UInt64(PtrUInt(fNVMemory.Memory)));
   // Counters, timers, clocks
   SVC_PCS_INFOPAGE_CNTR_EXEC:         Result := PutIntoMemory(TSVCNative(Param),UInt64(fExecutionCount));
 else

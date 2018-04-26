@@ -39,6 +39,11 @@ uses
   SysUtils,
   StrRect;
 
+{$IFDEF FPC_DisableWarns}
+  {$WARN 4055 OFF} // Conversion between ordinals and pointers is not portable
+  {$WARN 5058 OFF} // Variable "$1" does not seem to be initialized
+{$ENDIF}
+
 constructor TSVCMemory.Create(Size: TMemSize);
 begin
 inherited Create;
@@ -62,7 +67,7 @@ end;
 
 Function TSVCMemory.AddrPtr(Address: TSVCNative): Pointer;
 begin
-Result := {%H-}Pointer({%H-}PtrUInt(fMemory) + Address);
+Result := Pointer(PtrUInt(fMemory) + Address);
 end;
 
 //------------------------------------------------------------------------------
@@ -85,7 +90,7 @@ end;
 procedure TSVCMemory.CopyMemoryArea(Address,Size: TSVCNative; out Buff);
 begin
 If IsValidArea(Address,Size) then
-  Move(AddrPtr(Address)^,{%H-}Buff,Size)
+  Move(AddrPtr(Address)^,Buff,Size)
 else
   raise Exception.Create('TSVCMemory.CopyMemory: Out of memory bounds.');
 end;
@@ -98,7 +103,7 @@ var
 begin
 If IsValidArea(Address,Size) then
   begin
-    Move(AddrPtr(Address)^,{%H-}Buff,Size);
+    Move(AddrPtr(Address)^,Buff,Size);
     Result := Size;
   end
 else

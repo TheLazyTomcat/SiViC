@@ -7,9 +7,13 @@ interface
 uses
   AuxTypes;
 
+{$IFDEF FPC_DisableWarns}
+  {$WARN 3031 OFF} // Values in enumeration types have to be ascending
+{$ENDIF}
+
 type
   TSVCValueSize = (vsUndefined,vsByte,vsWord,vsLong,vsQuad,
-                   vsNative = vsWord{%H-},vsComp = vsLong{%H-});
+                   vsNative = vsWord,vsComp = vsLong);
 
   // basic integer types
   TSVCUByte = UInt8;        TSVCByte = TSVCUByte;
@@ -66,6 +70,10 @@ Function SVC_CharInSet(C: AnsiChar; const CharSet: TSVCCharSet): Boolean; overlo
 Function SVC_CharInSet(C: WideChar; const CharSet: TSVCCharSet): Boolean; overload;{$IFDEF CanInline} inline;{$ENDIF}
 
 implementation
+
+{$IFDEF FPC_DisableWarns}
+  {$WARN 4055 OFF} // Conversion between ordinals and pointers is not portable
+{$ENDIF}
 
 Function ByteParity(Value: TSVCByte): Boolean;
 begin
@@ -134,7 +142,7 @@ If size > 0 then
   begin
     SetLength(Arr,Length(Arr) + Size);
     For i := 0 to Pred(Size) do
-      Arr[Length(Arr) - Size + i] := TSVCByte({%H-}Pointer({%H-}PtrUInt(Addr(Data)) + PtrUInt(i))^);
+      Arr[Length(Arr) - Size + i] := TSVCByte(Pointer(PtrUInt(Addr(Data)) + PtrUInt(i))^);
   end;
 end;
 

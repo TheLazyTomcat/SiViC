@@ -18,6 +18,7 @@
   {$MODE Delphi}
   {$INLINE ON}
   {$DEFINE CanInline}
+  {$DEFINE FPC_DisableWarns}
 {$ELSE}
   {$IF CompilerVersion >= 17 then}  // Delphi 2005+
     {$DEFINE CanInline}

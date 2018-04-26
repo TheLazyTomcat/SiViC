@@ -72,6 +72,10 @@ uses
   SiViC_Registers,
   SiViC_ASM_Parser_Instr;
 
+{$IFDEF FPC_DisableWarns}
+  {$WARN 5057 OFF} // Local variable "$1" does not seem to be initialized
+{$ENDIF}
+
 type
   ESVCUnparsingError = class(Exception);
 
@@ -527,7 +531,7 @@ var
 begin
 If Length(InstructionData) <= Length(Temp.Data) then
   begin
-    FillChar({%H-}Temp.Data,Length(Temp.Data),0);
+    FillChar(Temp.Data,Length(Temp.Data),0);
     Temp.Position := Low(Temp.Data);
     For i := Low(InstructionData) to High(InstructionData) do
       Temp.Data[i] := InstructionData[i];
