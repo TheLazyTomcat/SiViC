@@ -73,6 +73,10 @@ const
   SVC_ACCESSMASK_MEMWRITE    = $0004;
   SVC_ACCESSMASK_NVMEMREAD   = $0008;
   SVC_ACCESSMASK_NVMEMWRITE  = $0010;
+  
+{$IFDEF FPC_DisableWarns}
+  {$WARN 5024 OFF} // Parameter "$1" not used
+{$ENDIF}
 
 {$IFDEF SVC_Debug}
 
