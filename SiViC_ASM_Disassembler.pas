@@ -66,6 +66,7 @@ uses
 
 {$IFDEF FPC_DisableWarns}
   {$WARN 4055 OFF} // Conversion between ordinals and pointers is not portable
+  {$WARN 5036 OFF} // Local variable "$1" does not seem to be initialized
 {$ENDIF}
 
 Function TSVCDisassembler.GetDisassembledLine(Index: Integer): TSVCDisassemblerDisassembledLine;
